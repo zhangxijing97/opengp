@@ -2,6 +2,7 @@
 
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ApiV1Module } from './api-v1/api-v1.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { EventsModule } from './events/events.module';
@@ -13,8 +14,11 @@ import { EventsModule } from './events/events.module';
       isGlobal: true,
     }),
 
-    // Register the motorsport events module
+    // Register the legacy motorsport events module (unchanged routes)
     EventsModule,
+
+    // Register the versioned /api/v1 API (paths prefixed per controller)
+    ApiV1Module,
   ],
 
   // Register the root controller and its service
