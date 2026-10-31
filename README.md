@@ -14,7 +14,7 @@
 | Backend | NestJS, TypeScript | OpenGP API and data integration |
 | External data | Racing data APIs | Schedules, sessions, and results |
 
-The backend currently contains OpenF1, Sportradar, and NASCAR adapters. **No final provider selection or complete series coverage has been approved.**
+The backend currently contains OpenF1, Sportradar, and NASCAR adapters for the original `/events` routes, and a versioned F1 API (`/api/v1`) built on Jolpica-F1 and OpenF1.
 
 ## 2. Project Structure
 
@@ -23,6 +23,7 @@ opengp/
 ├── frontend/             # Next.js web application
 ├── backend/              # NestJS API application
 ├── docs/
+│   ├── api-guide.md      # How to use /api/v1, with clickable examples
 │   ├── architecture.md   # System structure and request flow
 │   ├── api-contract.md   # Current API and proposed data model
 │   ├── data-providers.md # Provider integration notes (being developed)
@@ -86,6 +87,7 @@ Do not commit API keys or other secrets. Some integrations may return empty data
 
 - A Next.js frontend that requests event and session data from the backend.
 - NestJS routes for today's, upcoming, live, and past events; event details; and session details.
+- A versioned F1 API under `/api/v1`: series, seasons, sessions for a date range in the user's time zone, and Round/Session details. See the [API Guide](docs/api-guide.md).
 - A provider interface and registry with OpenF1, Sportradar, and NASCAR adapters.
 - Basic in-memory caching and provider-specific data mapping.
 
@@ -146,5 +148,6 @@ For all routes and response types, see [API Contract](docs/api-contract.md).
 | [API Contract](docs/api-contract.md) | Understand HTTP endpoints, response types, and proposed canonical entities |
 | [Data Providers](docs/data-providers.md) | Review provider integrations and selection status (documentation in progress) |
 | [Product Strategy](docs/product-strategy.md) | Understand product direction, priorities, and open decisions |
+| [API Guide](docs/api-guide.md) | Try the `/api/v1` endpoints with clickable examples |
 
 **Documentation rule:** Distinguish **Current** (in source code), **Confirmed** (approved product direction), and **Proposed** (not yet approved or implemented). The repository and verified test results remain the engineering source of truth.

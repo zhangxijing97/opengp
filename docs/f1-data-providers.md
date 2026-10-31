@@ -287,7 +287,9 @@ The following cases were **recorded and checked in W02**, not newly re-run here.
 | **2008 Brazilian GP / pre-2023 Practice** | Historical F1DB Practice records exist where OpenF1 has no coverage | Historical coverage is capability-specific, not “all years all fields” |
 | **2025 Chinese GP Grid query** | OpenF1 Qualifying key `9994` succeeds; Race key `9998` returns 404 | Grid query requires correct Session scope; 404 is not general endpoint outage |
 
-**Suggested automated acceptance flow:** capture a legally reusable and minimized source fixture; validate schema and mapping; assert domain invariants; compare against the specified official reference where allowed; test null/0/missing/404/429/timeout/cancelled; ensure a repeated sync does not duplicate an Event and an amended result creates a new snapshot. Do not commit provider secrets or redistribution-restricted official PDFs.
+**Suggested automated acceptance flow:** capture a legally reusable and minimized source fixture; validate schema and mapping; assert domain invariants; compare against the specified official reference where allowed; test null/0/missing/404/429/timeout/cancelled; ensure a repeated sync does not duplicate an Event and an amended result creates a new snapshot.
+
+Do not commit provider secrets or redistribution-restricted official PDFs.
 
 ### Stable references for the cases above
 
@@ -312,7 +314,7 @@ These URLs are **verification references**, not permission to scrape or redistri
 | `racing-data-provider.registry.ts` | First adapter by series | Introduce capability-aware routing for F1, preserving other series |
 | `events/types.ts` | Single `status`, mandatory numeric position/laps, mandatory Session end timestamp | Canonical status axes, nullable fields, decimal points, source provenance, source-independent IDs |
 | `events.service.ts` | `Promise.allSettled` can turn failures into empty arrays | Make true empty / not yet published / unsupported / upstream error distinguishable |
-| New `jolpica/` | No Jolpica adapter in current baseline | Implement HTTP client, pagination, mapping, rate limiting, caching, retries |
+| `jolpica/` | Calendar and seasons client implemented for `/api/v1` (2026-10-31) | Add results, qualifying, sprint and standings (next phase) |
 | Existing `/events/*` and `/sessions/:id/detail` | Current routes and provider-shaped IDs are in use | Define compatibility/aliases before changing route/DTO behavior |
 
 This document **does not mandate a database**, scheduler, cloud migration or `/api/v1` prefix by itself. Those are D01 design choices dependent on freshness requirements, traffic and the approved Canonical/API Contract. Avoid changing NASCAR and Sportradar modules as part of the F1 task unless an explicit compatibility need is identified.

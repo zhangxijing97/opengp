@@ -41,6 +41,9 @@ backend/src/
 ├── app.module.ts                        # Root module
 ├── app.controller.ts                    # Root example controller
 ├── app.service.ts                       # Root example service
+├── api-v1/                              # /api/v1 controllers, services, DTOs (F1)
+├── canonical/                           # Canonical types, IDs, capability routing
+├── f1/                                  # F1 calendar: Jolpica + OpenF1 merge, identity
 ├── events/
 │   ├── events.module.ts                 # Registers event-related components
 │   ├── events.controller.ts             # Event and session HTTP routes
@@ -51,13 +54,16 @@ backend/src/
 │   ├── data-providers.module.ts          # Registers data providers
 │   ├── racing-data-provider.interface.ts # Shared provider interface
 │   ├── racing-data-provider.registry.ts # Selects providers by series
+│   ├── jolpica/                          # Jolpica client used by /api/v1
 │   ├── openf1/                           # Client, Mapper, Provider
 │   ├── sportradar/                       # Client, Mapper, Provider
 │   └── nascar/                           # Client, Mapper, Provider
-└── common/cache.util.ts                # In-memory TTL cache helpers
+└── common/                             # Shared helpers: cache, time zones, upstream HTTP, errors
 ```
 
-OpenF1, Sportradar, and NASCAR adapters exist in the codebase, but their presence does **not** mean all features have been implemented or verified. The current NASCAR adapter uses **Sportradar's NASCAR API**, not NASCAR's public CDN feed.
+OpenF1, Sportradar, and NASCAR adapters exist in the codebase, but their presence does **not** mean all features have been implemented or verified.
+
+The current NASCAR adapter uses **Sportradar's NASCAR API**, not NASCAR's public CDN feed.
 
 ### 2.2 Backend Folders & Configuration Files
 
@@ -133,7 +139,7 @@ JSON Response → Frontend
 | **Client (API Client)** | Requests data from an external API. |
 | **Mapper** | Converts external data into OpenGP's format. |
 
-**Current limitations:**
+**Current limitations of the legacy `/events` routes** (`/api/v1` uses capability-based provider routing and reports provider failures explicitly):
 
 - The Registry selects the **first provider** supporting a series; it does not yet route by capability (e.g., calendar versus results).
 - Requests without a series call multiple providers. `Promise.allSettled` can make provider failures look like empty results.

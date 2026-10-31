@@ -1,6 +1,6 @@
 # OpenGP — HTTP API Contract v1
 
-> **Status:** Proposed; **NOT implemented or approved**. Source inspection: 2026-10-30. For the internal entity model see [`data-model.md`](./data-model.md); for upstream data see [`f1-data-providers.md`](./f1-data-providers.md).
+> **Status:** Partially implemented (2026-10-31): `/series`, `/series/:seriesId/seasons`, `/rounds`, `/rounds/:roundId` and `/sessions/:sessionId` are live under `/api/v1` for F1; results and standings are not yet implemented. Examples: [`api-guide.md`](./api-guide.md). For the internal entity model see [`data-model.md`](./data-model.md); for upstream data see [`f1-data-providers.md`](./f1-data-providers.md).
 
 ## 1. Existing endpoints (current source code)
 
@@ -15,22 +15,22 @@ These six routes are present in `backend/src/events/events.controller.ts` (not v
 | GET | `/events/:id` | `series?` |
 | GET | `/sessions/:id/detail` | `series?` |
 
-Current source lacks stable OpenGP IDs, shared error envelope and capability-based dual F1 routing. Current session classification from OpenF1 is fastest-lap ranked and must **not** be treated as official race finishing order.
+These legacy routes lack stable OpenGP IDs, a shared error envelope and capability-based F1 routing; the `/api/v1` routes below provide them. Legacy session classification from OpenF1 is fastest-lap ranked and must **not** be treated as official race finishing order.
 
-## 2. Proposed v1 public contract
+## 2. v1 public contract
 
-Base prefix: `/api/v1` (proposal). Date-only inputs use `YYYY-MM-DD`; timestamps are ISO 8601 with explicit timezone/UTC. `seriesId` uses OpenGP series namespaced IDs (e.g. `f1`).
+Base prefix: `/api/v1`. Date-only inputs use `YYYY-MM-DD`; timestamps are ISO 8601 with explicit timezone/UTC. `seriesId` uses OpenGP series namespaced IDs (e.g. `f1`).
 
-| Method | Endpoint | Purpose / parameters |
-| --- | --- | --- |
-| GET | `/series` | Supported series, not aspirational unimplemented ones |
-| GET | `/series/:seriesId/seasons` | Seasons with available coverage; `limit?`, `cursor?` |
-| GET | `/events` | Search by `seriesId?`, `from?`, `to?`, `limit?`, `cursor?` |
-| GET | `/events/:eventId` | Event details + sessions |
-| GET | `/sessions/:sessionId` | One session's schedule/lifecycle |
-| GET | `/sessions/:sessionId/results` | Published results or explicit availability |
-| GET | `/standings` | `seasonId` required; `type=driver|team`, `asOfEventId?` optional |
-| GET | `/participants/:participantId` | Global person identity and series participation; **defer until identity matching is supported** |
+| Method | Endpoint | Purpose / parameters | Status |
+| --- | --- | --- | --- |
+| GET | `/series` | Supported series, not aspirational unimplemented ones | Implemented (F1) |
+| GET | `/series/:seriesId/seasons` | Seasons with coverage (no pagination yet) | Implemented (F1) |
+| GET | `/rounds` | Rounds with nested sessions; `from` (inclusive) and `to` (exclusive) local dates, `tz?`, `seriesId?`; max 31 days | Implemented (F1) |
+| GET | `/rounds/:roundId` | One Round with all sessions | Implemented (F1) |
+| GET | `/sessions/:sessionId` | One session's schedule/lifecycle | Implemented (F1) |
+| GET | `/sessions/:sessionId/results` | Published results or explicit availability | Not yet |
+| GET | `/standings` | `seasonId` required; `subjectType=driver\|team`, `asOfRoundId?` optional | Not yet |
+| GET | `/participants/:participantId` | Global person identity and series participation; **defer until identity matching is supported** | Deferred |
 
 **Scope:** v1 implementing F1 calendar, practice/SQ/race results, qualifying, sprint and standings; no free real-time promise. `/participants/:id` is reserved only, not a required implementation.
 
@@ -57,7 +57,8 @@ Base prefix: `/api/v1` (proposal). Date-only inputs use `YYYY-MM-DD`; timestamps
   },
   "meta": {
     "availability": "available",
-    "source": "jolpica",
+    "sources": [{ "provider": "jolpica", "capability": "race_result" }],
+    "warnings": [],
     "retrievedAt": "2026-10-30T00:00:00Z"
   }
 }
@@ -72,7 +73,7 @@ If results have not been published, return a successful HTTP response with `resu
 ```json
 {
   "error": {
-    "code": "UPSTREAM_ERROR",
+    "code": "UPSTREAM_UNAVAILABLE",
     "message": "Racing data is temporarily unavailable."
   },
   "meta": {
