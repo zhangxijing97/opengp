@@ -1,0 +1,146 @@
+/* OpenGP design tokens. Generated from the Figma handoff page (page 05, section 3).
+ * Source of truth for values: Figma file 4ZHA4lgk5NbZDFzMoMUsSH, page "05 · Dev Handoff".
+ * Names: color-*, radius-*, shadow-*, space-*, layout-*, font-*, and .text-* classes (see docs/design/README.md for the naming rules).
+ * Items marked "Contrast TBD" are known to be below 4.5:1 and are an open question (docs/design/open-questions.md). */
+
+:root {
+  /* ---- colour ---- */
+  --color-brand-indigo: #4652e5; /* Brand indigo: buttons, light-mode text, bars, selected text */
+  --color-brand-indigo-light: #e9eafc; /* Selected background, non-today ticket stub */
+  --color-brand-indigo-dark: #6a73ea; /* Dark-mode indigo. RESERVED, not used yet */
+  --color-brand-amber: #f59e0b; /* Primary button, today ticket stub, nav bottom line, yellow progress */
+  --color-brand-amber-light: #fef1dd; /* Light amber: hairlines, tag backgrounds */
+  --color-brand-ink: #121212; /* Ink: plates, stamps, button text. Same value as text-primary */
+  --color-surface-page: #f4f4f4; /* Page background */
+  --color-surface-card: #ffffff; /* Cards, rows */
+  --color-surface-header: #fafafa; /* Header strip of the sidebar series lists */
+  --color-surface-inset: #f5f5f5; /* Result card, Drivers/Teams track, standings arrow buttons */
+  --color-surface-track: #e8e8e8; /* Week track */
+  --color-border-default: #e5e5e5; /* 1px card outline, hole outline */
+  --color-border-separator: #f5f5f5; /* 1px full-width separator drawn on the TOP edge of each row (not the first row) */
+  --color-border-keyline: #cfcfcf; /* 1px outline outside the footer sticker */
+  --color-border-segment: #c9c9c9; /* Outline of unfinished season-ruler segments */
+  --color-dot-inactive: #d4d4d4; /* Inactive carousel dots */
+  --color-text-primary: #121212; /* Primary text (same value as brand-ink) */
+  --color-text-secondary: #525252; /* Secondary text */
+  --color-text-tertiary: #737373; /* Meta text: times, captions. Contrast TBD (open question) */
+  --color-text-disabled: #a3a3a3; /* Past dates in the week strip. Contrast TBD */
+  --color-text-on-brand: #ffffff; /* White text on indigo or ink */
+  --color-text-brand: #4652e5; /* Selected-state indigo text */
+  --color-text-amber: #a76607; /* Amber text: P1 label, '6 left', Yellow flag, RESCHEDULED. Contrast TBD */
+  --color-status-live: #16a34a; /* LIVE text, live progress, 'Can still win'. As TEXT it is 3.3:1; a text variant #15803D is suggested. Contrast TBD */
+  --color-flag-red: #dc2626; /* Red flag text and progress */
+  --color-flag-yellow: #f59e0b; /* Yellow-family progress bars (text uses text-amber) */
+  --color-position-1: #a76607; /* P1 label (alias of text-amber) */
+  --color-position-2: #64748b; /* P2 label. Contrast TBD */
+  --color-position-3: #b45309; /* P3 label */
+  --color-icon-primary: #121212; /* Icon strokes */
+  --color-icon-muted: #8c8c8c; /* Unselected star outline */
+  --color-icon-subtle: #a3a3a3; /* Collapse arrows etc. */
+  --color-icon-quiet: #737373; /* Rare secondary icons */
+  --color-nav-glass: rgb(27 42 225 / 0.8); /* #1B2AE1 at 80% opacity. Top nav only (translucent, not a normal surface). Pair with a 20px background blur: backdrop-filter: blur(20px) */
+
+  /* series colours (plate band). Series colour is DATA (series.color); these are the values in the design. */
+  --color-series-gtwc-eu: #7c3aed;
+  --color-series-gtwc-am: #2563eb;
+  --color-series-f1: #dc2626;
+  --color-series-motogp: #be123c;
+  --color-series-wec: #0f766e;
+  --color-series-nascar: #ca8a04;
+  --color-series-indycar: #334155;
+  --color-series-formula-e: #0284c7;
+
+  /* ---- font families ---- */
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-condensed: "Barlow Condensed", Arial Narrow, sans-serif;
+  --font-data: "Rajdhani", system-ui, sans-serif;
+  --font-brand: "Barlow", system-ui, sans-serif;
+
+  /* ---- radius ---- */
+  --radius-segment: 1.5px; /* season-ruler segments */
+  --radius-micro: 4px; /* small plate inside the series plate, '/' key chip */
+  --radius-plate: 6px; /* series plate outer frame */
+  --radius-pill: 8px; /* selected pill (24px tall) */
+  --radius-track: 10px; /* Drivers/Teams track (30px tall) */
+  --radius-control: 12px; /* search field, buttons (36px tall), icon button, result / podium cards, week cell (nested in the week track: 16 - 4 = 12) */
+  --radius-container: 16px; /* week track */
+  --radius-surface: 24px; /* sidebar lists, day schedule, standings, footer sticker */
+  --radius-full: 999px; /* circular elements */
+
+  /* ---- shadow (the ONLY shadow: attached objects = footer sticker + selected pills) ---- */
+  --shadow-attached: 0 1px 3px rgb(0 0 0 / 0.10), 0 1px 1px rgb(0 0 0 / 0.08);
+
+  /* ---- spacing scale (auto layout gap and padding). The design also uses off-scale values (1.5, 3, 5, 7, 9, 13, 14): see open-questions.md C ---- */
+  --space-2: 2px;
+  --space-4: 4px;
+  --space-6: 6px;
+  --space-8: 8px;
+  --space-10: 10px;
+  --space-12: 12px;
+  --space-16: 16px;
+  --space-20: 20px;
+  --space-24: 24px;
+  --space-page: 84px; /* page side margin */
+
+  /* ---- layout: 1440 = 84 + 288 + 24 + 648 + 24 + 288 + 84 (grid module 24px). Desktop only; no mobile design yet ---- */
+  --layout-page-width: 1440px;
+  --layout-col-side: 288px;
+  --layout-col-main: 648px;
+  --layout-col-gap: 24px;
+  --layout-stub-width: 56px;
+}
+
+/* ---- text styles (53). Weights: Regular 400, Medium 500, Semi Bold 600, Bold 700, ExtraBold 800. ---- */
+.text-row-title { font-family: var(--font-sans); font-weight: 600; font-size: 15px; line-height: 1.4; letter-spacing: -0.02em; } /* Event name in multi-line rows */
+.text-row-title-sm { font-family: var(--font-sans); font-weight: 500; font-size: 13px; line-height: 1.4; letter-spacing: -0.01em; } /* Event name in single-line rows */
+.text-row-session { font-family: var(--font-sans); font-weight: 500; font-size: 12px; line-height: 1.4; letter-spacing: 0; } /* Session name */
+.text-row-meta { font-family: var(--font-sans); font-weight: 500; font-size: 12px; line-height: normal; letter-spacing: 0; } /* Time left / status text */
+.text-row-live { font-family: var(--font-sans); font-weight: 700; font-size: 11px; line-height: normal; letter-spacing: 0.06em; } /* LIVE and RED FLAG labels */
+.text-row-result-label { font-family: var(--font-sans); font-weight: 600; font-size: 11px; line-height: normal; letter-spacing: 0; } /* P1 / P2 / P3 / Fastest labels */
+.text-row-result-name { font-family: var(--font-sans); font-weight: 500; font-size: 13px; line-height: normal; letter-spacing: 0; } /* Result name in single-line rows */
+.text-list-item { font-family: var(--font-sans); font-weight: 500; font-size: 13px; line-height: 1.4; letter-spacing: 0; } /* Sidebar series item */
+.text-card-title { font-family: var(--font-sans); font-weight: 600; font-size: 14px; line-height: 1.4; letter-spacing: -0.01em; } /* Sidebar list header */
+.text-section-count { font-family: var(--font-sans); font-weight: 400; font-size: 13px; line-height: 1.4; letter-spacing: 0; } /* '15 sessions this week' */
+.text-caption { font-family: var(--font-sans); font-weight: 400; font-size: 12px; line-height: 1.4; letter-spacing: 0; } /* 'This week · times in PT' */
+.text-week-label { font-family: var(--font-sans); font-weight: 600; font-size: 10px; line-height: 1.4; letter-spacing: 0.06em; } /* WEEK / MON / TUE ... */
+.text-week-sub { font-family: var(--font-sans); font-weight: 500; font-size: 10px; line-height: 1.4; letter-spacing: 0; } /* 'sessions' under the number */
+.text-table-head { font-family: var(--font-sans); font-weight: 600; font-size: 10px; line-height: 1.4; letter-spacing: 0.04em; } /* Standings table header */
+.text-footer-body { font-family: var(--font-sans); font-weight: 400; font-size: 13px; line-height: 1.5; letter-spacing: 0; } /* Footer tagline and links */
+.text-footer-legal { font-family: var(--font-sans); font-weight: 400; font-size: 12px; line-height: 1.5; letter-spacing: 0; } /* Footer legal links */
+.text-start-sub { font-family: var(--font-sans); font-weight: 400; font-size: 11px; line-height: 1.4; letter-spacing: 0; } /* 'ends ~4:00 AM', 'Can still win' */
+.text-row-time { font-family: var(--font-sans); font-weight: 400; font-size: 12px; line-height: normal; letter-spacing: 0; } /* ' · 3:00 AM' after the session name */
+.text-section-title { font-family: var(--font-sans); font-weight: 600; font-size: 16px; line-height: 1.4; letter-spacing: -0.025em; } /* Following / All series */
+.text-group-label { font-family: var(--font-sans); font-weight: 600; font-size: 11px; line-height: normal; letter-spacing: 0.06em; } /* PRO / CLASS WINNERS */
+.text-week-status { font-family: var(--font-sans); font-weight: 600; font-size: 10px; line-height: 1.4; letter-spacing: 0; } /* '6 left' in the week cell */
+.text-series-title { font-family: var(--font-sans); font-weight: 600; font-size: 16px; line-height: 1.4; letter-spacing: -0.01em; } /* Standings title */
+.text-season-note { font-family: var(--font-sans); font-weight: 500; font-size: 11px; line-height: normal; letter-spacing: 0; } /* '4 to go' */
+.text-segment-selected { font-family: var(--font-sans); font-weight: 600; font-size: 11px; line-height: 16px; letter-spacing: 0; } /* Selected Drivers/Teams label */
+.text-segment { font-family: var(--font-sans); font-weight: 500; font-size: 11px; line-height: 16px; letter-spacing: 0; } /* Unselected Drivers/Teams label */
+.text-footer-fine { font-family: var(--font-sans); font-weight: 400; font-size: 11px; line-height: 1.5; letter-spacing: 0; } /* Footer disclaimer */
+.text-tag { font-family: var(--font-sans); font-weight: 700; font-size: 10px; line-height: 1.5; letter-spacing: 0.06em; } /* RESCHEDULED tag */
+.text-week-date { font-family: var(--font-data); font-weight: 600; font-size: 18px; line-height: 1.15; letter-spacing: 0; } /* Week cell date number */
+.text-week-date-strong { font-family: var(--font-data); font-weight: 700; font-size: 18px; line-height: 1.15; letter-spacing: 0; } /* Selected / today date number */
+.text-table-pos { font-family: var(--font-data); font-weight: 700; font-size: 14px; line-height: 1.1; letter-spacing: 0; } /* Standings position */
+.text-table-driver { font-family: var(--font-data); font-weight: 600; font-size: 14px; line-height: 1.15; letter-spacing: 0.03em; } /* Standings driver name */
+.text-table-stat { font-family: var(--font-data); font-weight: 600; font-size: 14px; line-height: 1.15; letter-spacing: 0.02em; } /* Standings wins / podiums */
+.text-table-points { font-family: var(--font-data); font-weight: 700; font-size: 14px; line-height: 1.15; letter-spacing: 0.02em; } /* Standings points */
+.text-podium-name { font-family: var(--font-data); font-weight: 700; font-size: 14px; line-height: normal; letter-spacing: 0; } /* Rank bar name */
+.text-podium-name-lg { font-family: var(--font-data); font-weight: 700; font-size: 15px; line-height: normal; letter-spacing: 0; } /* Large rank name */
+.text-class-winner { font-family: var(--font-data); font-weight: 700; font-size: 13px; line-height: normal; letter-spacing: 0; } /* Class winner name */
+.text-roundel { font-family: var(--font-data); font-weight: 700; font-size: 12px; line-height: 1; letter-spacing: 0; } /* Position inside roundel */
+.text-start-time { font-family: var(--font-data); font-weight: 700; font-size: 20px; line-height: 1.15; letter-spacing: 0.03em; } /* Start time in multi-line upcoming rows */
+.text-start-time-sm { font-family: var(--font-data); font-weight: 700; font-size: 15px; line-height: 1.15; letter-spacing: 0.03em; } /* Start time in single-line upcoming rows */
+.text-range-title { font-family: var(--font-data); font-weight: 700; font-size: 20px; line-height: 1.2; letter-spacing: 0.02em; } /* 'Oct 26 – Nov 1' */
+.text-plate-code { font-family: var(--font-condensed); font-weight: 800; font-size: 13px; line-height: 16px; letter-spacing: 0.5px; } /* Series plate code */
+.text-stub-dow { font-family: var(--font-condensed); font-weight: 700; font-size: 12px; line-height: 1; letter-spacing: 0; } /* SAT / SUN on the stub */
+.text-stub-day { font-family: var(--font-condensed); font-weight: 800; font-size: 34px; line-height: 1; letter-spacing: 0; } /* Day number on the stub */
+.text-stub-month { font-family: var(--font-condensed); font-weight: 600; font-size: 10px; line-height: 1; letter-spacing: 2.4px; } /* OCT / NOV on the stub */
+.text-stub-count { font-family: var(--font-condensed); font-weight: 800; font-size: 20px; line-height: 1; letter-spacing: 0; } /* Session count on the stub */
+.text-stub-caption { font-family: var(--font-condensed); font-weight: 600; font-size: 9px; line-height: 1; letter-spacing: 1px; } /* SESSIONS on the stub */
+.text-cta { font-family: var(--font-condensed); font-weight: 800; font-size: 15px; line-height: 1.4; letter-spacing: 1.6px; } /* SIGN IN / BACK TO GRID */
+.text-footer-heading { font-family: var(--font-condensed); font-weight: 800; font-size: 13px; line-height: 1.5; letter-spacing: 2px; } /* PRODUCT / DATA / COMPANY */
+.text-stamp { font-family: var(--font-condensed); font-weight: 700; font-size: 10px; line-height: 1; letter-spacing: 1.4px; } /* TODAY stamp */
+.text-round-label { font-family: var(--font-condensed); font-weight: 600; font-size: 12px; line-height: normal; letter-spacing: 0.1em; } /* ROUND */
+.text-round-number { font-family: var(--font-condensed); font-weight: 700; font-size: 20px; line-height: normal; letter-spacing: 0; } /* Round number */
+.text-round-total { font-family: var(--font-condensed); font-weight: 600; font-size: 13px; line-height: normal; letter-spacing: 0; } /* '/ 24' */
+.text-wordmark { font-family: var(--font-brand); font-weight: 500; font-size: 22px; line-height: 1; letter-spacing: -0.01em; } /* OpenGP wordmark */
