@@ -1,7 +1,9 @@
 /* OpenGP design tokens. Generated from the Figma handoff page (page 05, section 3).
- * Source of truth for values: Figma file 4ZHA4lgk5NbZDFzMoMUsSH, page "05 · Dev Handoff".
- * Names: color-*, radius-*, shadow-*, space-*, layout-*, font-*, and .text-* classes (see docs/design/README.md for the naming rules).
- * Items marked "Contrast TBD" are known to be below 4.5:1 and are an open question (docs/design/open-questions.md). */
+ * Figma file 4ZHA4lgk5NbZDFzMoMUsSH, page "05 · Dev Handoff · 前端交接". Details: docs/design/HANDOFF.md.
+ * Tailwind v4 note: --color-*, --radius-*, --shadow-* and --font-* can move into @theme; keep --space-* and --layout-* as plain variables.
+ * Font note: the family names below are PLACEHOLDERS. Fonts are loaded with next/font; map --font-sans, --font-data, --font-condensed
+ *   and --font-brand to the next/font CSS variables (Inter and Rajdhani already exist as --font-body / --font-display in layout.tsx).
+ * Items marked "Contrast TBD" are known to be below 4.5:1 (HANDOFF.md section 5, items E). */
 
 :root {
   /* ---- colour ---- */
