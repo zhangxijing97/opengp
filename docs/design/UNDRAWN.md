@@ -154,40 +154,43 @@ What follows from it:
 - Rollback: `git revert` the move commit, or publish the previous deploy in Netlify.
 - The Home is built (section 7). `--keep-old-home` of the script is only for a checkout that still has the old Home.
 
-## 7. The Home (2026-11-15)
+## 7. The Home (2026-11-15, with results and standings)
 
 Built from the design (Figma page 05: the three Homes and the components of section 8). `src/app/(site)/page.tsx` loads the data; `src/components/home/HomeView.tsx` draws the three columns: series lists 288, schedule 648, standings 288, gaps 24, margins 84. The nav and the footer run edge to edge of the window; the content stays on the 1440 grid. Below 1440 the page still scrolls sideways (mobile is not designed).
 
 ### Data
 
-- The server asks for three weeks around the chosen week, in UTC, one request per series (`src/lib/home/home-data.ts`). The server does not know the visitor's time zone, so it cannot decide the days.
-- Only Formula 1 has a real request (it has an `apiId` in `series-theme.ts`). Every other series has a stand-in request with the same answer shape and no rounds (`src/lib/home/series-sources.ts`), so those series look like they have no events. This was decided with the owner on 2026-11-14. To switch a series on, give it an `apiId`; nothing else changes.
-- The browser groups the sessions into days in the visitor's zone (`HomeView`). The first render uses UTC and the server's clock, so it matches the server's HTML, and the real zone arrives right after: times can change once, a moment after the page appears.
-- `?week=YYYY-MM-DD` picks a week; the arrows are links to the weeks around it. Without it the default week is this week, or last week on a Monday while a session of its weekend is not finished (HANDOFF.md section 3). A selected day is page state, not part of the address.
-- Statuses (live, finished) come from the server's clock. While the tab is open and visible the page asks the server again every minute.
-- A failed request shows an error above the schedule. It is never shown as an empty week.
+- The server asks for ONE week by track date (`dateBasis=track`): a race weekend stays together whatever time zone the visitor is in, and the backend sends only the sessions of that week (`src/lib/home/home-data.ts`). It asks in UTC because the server does not know the visitor's zone; the browser then groups the sessions into days in the visitor's zone. The first render uses UTC and the server's clock, so it matches the server's HTML, and the real zone arrives right after: times can change once, a moment after the page appears.
+- Without `?week=` the server picks the week: this week (UTC), except on a Monday while a session of the weekend before is not finished; only then is the week before loaded as well. A visitor far from UTC can see the old week for a few hours at the turn of the week. With `?week=YYYY-MM-DD` that week is loaded; the arrows are links to the weeks around it.
+- The standings of Formula 1 (drivers and teams) are loaded with the week, for the season of the week's Thursday.
+- Only Formula 1 has real requests (an `apiId` in `series-theme.ts`). Every other series has a stand-in request with the same answer shape and no rounds (`src/lib/home/series-sources.ts`), so those series look like they have no events. Decided with the owner on 2026-11-14. To switch a series on, give it an `apiId`.
+- Statuses (live, finished) come from the server's clock. While a session is in progress and the tab is visible the page asks the server again every minute; without a live session nothing is refreshed.
+- A failed request shows an error (above the schedule, or inside the standings panel). It is never shown as an empty week or an empty table.
 
 ### What each part does
 
-- **Time selector**: the week range, "This week / Next week / Last week" and the visitor's zone, arrows, and the week track. WEEK shows every day; a day cell shows only that day. The track counts the sessions of the followed series, or of all series for a visitor who follows nothing (the design counts the followed ones only; a new visitor would see zeros). Today says `N to go` before anything starts, `N left` once something is live or finished, `N done` at the end of the day.
-- **Sections**: Following (with a plain hint if nothing is followed or nothing is on) and All series. The arrow collapses a section.
-- **Day schedule**: the ticket of the design. Its shapes are the generator of the HANDOFF.md appendix (`ticket-shape.ts`, hole counts 245 gives 30 and 554 gives 74 are tested). The height is computed from the row heights for the server render and then follows the measured height of the rows. A day with one row would be shorter than the date on its stub, so a card is at least 96px and the row sits in the middle. The session count at the bottom of the stub is left out under 132px, where it would touch the date (the week track shows it).
-- **Session rows**: single line for the practice and support tiers (T3, T4), two lines for the main sessions (T1, T2). Upcoming: the start time, with `+1 day` in front when the visitor's calendar is a day ahead of the weekend, and `ends ~` under it on two-line rows. A Monday-morning session of a weekend stays at the end of Sunday (that is the weekend rule). Sub-sessions (T5) have no row. Cancelled and postponed sessions use the plain version of section 3.
-- **Finished rows** have no result block, because the API has no results: the time moves into the session line, and the grey pill `Results pending` shows only when the API says the results are not published. **Live rows** show `LIVE` and nothing else: no progress bar, no time left, no flags. The status is worked out from the clock, not from live timing.
-- **Series lists**: Followed series, Top series and All series, with the round badge, a link to the series page and the star that follows. The arrow collapses a list.
-- **Standings column**: the panel keeps its place and its title and says that standings are not available yet.
+- **Time selector**: the week range, "This week / Next week / Last week" and the visitor's zone, arrows, and the week track. WEEK shows every day; a day cell shows only that day. The track counts the sessions of the followed series, or of all series for a visitor who follows nothing (the design counts the followed ones only). Today says `N to go` before anything starts, `N left` once something is live or finished, `N done` at the end of the day.
+- **Day schedule**: the ticket of the design (`ticket-shape.ts`). The height is computed from the row heights for the server render, then follows the measured height. A card is at least 96px and a single row sits in the middle; the session count at the bottom of the stub is left out under 132px.
+- **Session rows**: single line for T3 and T4, two lines for T1 and T2. Upcoming: the start time (`+1 day` in front when the visitor's calendar is a day ahead of the weekend) and `ends ~` under it. A session of the weekend stays with its track day, even when the visitor's calendar puts it on Monday.
+- **Finished rows** show the result block of their tier, from the result teaser of the API: T1 (race) the podium box (114px high row); T2 (qualifying, sprint) the winner in large type and the next two; T3 (sprint qualifying) `P1 | name`; T4 (practice) `Fastest | name`. Drivers are shown by family name, with the team colour bar (practice and sprint qualifying have no team, so no bar). With no teaser: the grey pill `Results pending` when the API says `not_published`, `Results unavailable` when the provider failed (`upstream_error`, `access_restricted`), nothing otherwise.
+- **Live rows** show `LIVE` and nothing else: no progress bar, time left or flags. The status is worked out from the clock, not from live timing.
+- **Standings column**: title, ROUND n / total with the season ruler (done, current, to go), the Drivers / Teams switch, the table (roundels for the top three, team colour bar, wins, points) and the green bar with its legend. `Can still win` comes from the backend and is calculated.
+- **Session page**: the full classification as the provider published it (positions, DSQ / DNF / DNS instead of a rank, times and gaps, qualifying phases), with a note that it is not certified as final.
 
 ### Built differently from the design, on purpose
 
-- The footer sticker is drawn in three slices (left cap, band, right cap) so the arc and the chamfer stay round at any width. The 1px keyline of the design is not drawn: in the Figma file the white edge covers it.
-- The caret next to the week range (a week picker) is not drawn, because the picker is not designed.
+- The footer sticker is drawn in three slices so the arc and the chamfer stay round at any width; the 1px keyline is not drawn (the white edge covers it in the Figma file).
+- The caret next to the week range (a week picker) is not drawn: the picker is not designed.
 - `Results pending` uses `surface-inset` (#F5F5F5); the design's #F0F0F0 has no token.
-- The two collapse buttons that share a name in the design have different accessible names ("Collapse All series sessions" and "Collapse All series list").
-- Zones with no abbreviation are shown as an offset ("GMT+9"), not as "Japan Time".
+- The podium rows have no time or gap on the right (the design shows them): the result teaser of the API has none. The standings table has no podiums column (POD) and the panel has no carousel over series: the API has no podium counts and only Formula 1 has standings.
+- Team bars use 1.5px corners (`--radius-segment`), the design 1px.
+- The collapse buttons have different accessible names ("Collapse All series sessions" and "Collapse All series list").
+- Zones with no abbreviation are shown as an offset ("GMT+9").
+- Team colours come from a table in `team-theme.ts` (the values drawn in the design); a team that is not in it gets the neutral colour.
 
 ### Not built, because the data or the design does not exist
 
-Result towers, podiums, class winners and the `Fastest` / `P1` lines; the LIVE progress bar, time left and flags; the standings table and tabs; the track-local time ("4:05 PM at the track") and the `RESCHEDULED` tag with `was ...`; the three designed states as fixtures for a visual diff; the week picker; hover and pressed states beyond a tint; the layout below 1440.
+The LIVE progress bar, time left and flags; the track-local time ("4:05 PM at the track") and the `RESCHEDULED` tag with `was ...`; a podiums column and a car number in the result rows; the three designed states as fixtures for a visual diff; the week picker; hover and pressed states beyond a tint; the layout below 1440.
 
 ### Decisions, scored
 
@@ -195,24 +198,20 @@ Score = 0.30 Fit to the design + 0.30 Correctness + 0.25 Simplicity + 0.15 Low r
 
 | Decision | Options (score) | Chosen |
 |---|---|---|
+| How the week is loaded | one week by track date 4.60; viewer date, no track date 3.05; three weeks in UTC and a rule in the browser 2.85 | one week by track date |
+| Who picks the default week | the server, from UTC 4.00; the browser, with three weeks loaded 3.95; the browser, with a redirect 3.80 | the server |
+| Podium without times | the box with names only 4.40; no podium, use the inline layout 3.85; load every race's results for times 3.10 | the box with names only |
+| How a driver is named in a result | family name 4.30; three-letter code 4.10; full name 3.20 | family name |
 | Footer sticker at any width | three slices 4.05; JS-measured path 3.95; one SVG stretched 3.65; CSS radius and clip 2.95 | three slices |
-| Where days are decided | UTC window from the server, grouping in the browser 4.60; client fetch through a proxy route 3.95; time zone cookie 2.90; UTC only 2.60 | server window, browser grouping |
 | Ticket shape | SVG path per height 4.35; CSS mask 3.00; fixed images 2.15 | SVG path |
-| Ticket height | computed, then measured 4.35; measured only 4.15; computed only 3.95 | computed, then measured |
 | Counts in the week track | followed if any, else all 4.30; followed only 3.95; all 3.95 | followed if any, else all |
-| Finished rows without results | plain row, pill only for `not_published` 4.15; pill on every finished row 3.50; fake results 1.90 | plain row |
-| Standings column | placeholder panel 4.70; hide the column 3.40; fake standings 1.90 | placeholder |
-| Backend change | none now, optional `trackTimeZone` later 4.10; add `trackTimeZone` and a circuit map now 3.75; a new week endpoint 3.10 | none now |
-| Zone label | offset 4.70; "Japan Time" 3.80; city names 2.90 | offset |
 | Card shorter than its stub | minimum height 96, row centred 4.25; hide the month 3.10; smaller stub text 2.70 | minimum height |
-| Live status freshness | ask the server every minute 4.30; recompute in the browser 3.05; nothing 2.90 | ask the server |
-| Selected day | page state 4.70; `?day=` in the address 4.20 | page state |
 
 ### Still open
 
-- Results, progress, flags and standings need the backend's next phase and a design for "no data" states.
-- A track time zone and the weekend dates on a round would make `+1 day` and the weekend grouping exact. Proposal: an optional `trackTimeZone` (IANA name, null when unknown) on a round, filled from a circuit table. The frontend does not use it yet.
-- The Home reads the F1 calendar on every view (no cache in the data service, section 5).
+- The podium times and gaps need `valueLabel` in the result teaser (backend).
+- The practice and sprint qualifying teasers have no team (OpenF1): their team bar is missing until the backend links the driver to a team.
+- The `/api/v1/rounds` list now fetches result teasers: the first look at a finished week takes 2 to 3 seconds (backend cache is empty), and OpenF1 can answer 503 under load (shown as `Results unavailable`).
 - Whether a finished row, a live row and the stub of a short card need designed versions.
 - Whether `LIVE` should show while the status is only inferred from the clock.
-- A week picker behind the range title; hover and pressed states.
+- A week picker behind the range title; hover and pressed states; the standings carousel when a second series has standings.

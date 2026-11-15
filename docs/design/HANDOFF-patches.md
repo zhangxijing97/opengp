@@ -1,6 +1,6 @@
 # HANDOFF.md: replacements to apply (2026-11-14)
 
-Apply each one with find and replace in `docs/design/HANDOFF.md`. If a find text is not there, change only the small part that is. Items 1 to 12 fix statements that are out of date; 13 to 19 record the new decisions and the code that now exists.
+Apply each one with find and replace in `docs/design/HANDOFF.md`. If a find text is not there, change only the small part that is. Items 1 to 12 fix statements that are out of date; 13 to 22 record the new decisions and the code that now exists.
 
 ~~~text
 1. Header
@@ -94,4 +94,13 @@ REPLACE: Series without backend coverage: show nothing. Built as a stand-in requ
 
 19. Section 5, "Decided" list: add at the end
 ADD:     Home, 2026-11-15: counts in the week track are for the followed series, or for all series when nothing is followed; a card is at least 96px high; `Results pending` shows only for `not_published`; the week range has no caret until a picker is designed; the footer sticker is three slices and runs edge to edge. Scores and reasons: `docs/design/UNDRAWN.md` section 7.
+
+20. Section 6, "M4 — Session row variants", last line before "Acceptance"
+ADD:     Built on 2026-11-15 from the result teaser of `/api/v1/rounds`: the podium (T1), the inline result (T2) and the result line (T3, T4), without the time and gap column (the teaser has none). The live variants show LIVE only. See `docs/design/UNDRAWN.md` section 7.
+
+21. Section 6, "M3 — Side columns", the standings line
+ADD:     Built on 2026-11-15 from `/api/v1/standings`: title, season ruler, Drivers / Teams switch, table with roundels and the green bar, legend. Left out: the carousel over series and the podiums column (no data).
+
+22. Section 5, "Decided" list: add at the end
+ADD:     Home results, 2026-11-15: one week is loaded by track date and the server picks the default week from UTC; drivers are shown by family name; the podium box shows names only until the teaser has times; team colours come from `team-theme.ts`. Scores and reasons: `docs/design/UNDRAWN.md` section 7.
 ~~~

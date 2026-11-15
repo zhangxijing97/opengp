@@ -21,6 +21,10 @@ function session(
     scheduledDate: null,
     schedulePrecision: startsAt ? 'instant' : 'unknown',
     scheduledEndAt: null,
+    localDate: null,
+    trackLocalDate: null,
+    trackTimeZone: null,
+    dayOffset: null,
     lifecycle: { status, basis: 'time_inferred' },
     resultAvailability: 'unknown',
     resultPreview: null,
@@ -37,6 +41,7 @@ function round(id: string, name: string, startsAt: string, sessions: SessionSumm
     roundNumber: 20,
     circuit: null,
     locationLabel: null,
+    trackTimeZone: null,
     startsAt,
     endsAt: null,
     status: 'ongoing',
@@ -47,7 +52,7 @@ function round(id: string, name: string, startsAt: string, sessions: SessionSumm
 
 function data(rounds: RoundSummary[]): RoundsListData {
   return {
-    interval: { from: '2026-10-26', to: '2026-11-03', tz: 'UTC', startsAt: '', endsAt: '' },
+    interval: { from: '2026-10-26', to: '2026-11-03', tz: 'UTC', dateBasis: 'viewer', startsAt: '', endsAt: '' },
     rounds,
   };
 }
@@ -67,7 +72,7 @@ const ctxLa: AdaptContext = {
 };
 
 test('the query for a week reaches the Monday after, for the weekend spill-over', () => {
-  assert.deepEqual(weekQueryRange('2026-10-26'), { from: '2026-10-26', to: '2026-11-03' });
+  assert.deepEqual(weekQueryRange('2026-10-26'), { from: '2026-10-26', to: '2026-11-02' });
 });
 
 test('sessions are grouped by the user day, sorted by start, tiers and states mapped', () => {
@@ -264,4 +269,51 @@ test('sub-sessions (tier T5) are not rows and are not counted as skipped', () =>
   const vm = buildHomeVM(data([rally]), ctxLa, '2026-10-26');
   assert.deepEqual(vm.allSeries.flatMap((day) => day.rows.map((row) => row.id)), ['shakedown']);
   assert.deepEqual(vm.skippedSessionIds, []);
+});
+
+test('result teasers become result rows with team colours; no teaser leaves only the availability', () => {
+  const finished = round('f1:2026:brazil', 'Brazilian Grand Prix', '2026-11-06T15:30:00Z', [
+    session('race', 'race', '2026-11-08T17:00:00Z', 'completed', {
+      resultAvailability: 'available',
+      resultPreview: {
+        kind: 'top_three',
+        names: ['Lando Norris', 'George Russell', 'Andrea Kimi Antonelli'],
+        metricLabel: null,
+        entries: [
+          { position: 1, name: 'Lando Norris', code: 'NOR', teamName: 'McLaren' },
+          { position: 2, name: 'George Russell', code: 'RUS', teamName: 'Mercedes' },
+          { position: 3, name: 'Andrea Kimi Antonelli', code: 'ANT', teamName: null },
+        ],
+      },
+    }),
+    session('fp1', 'practice', '2026-11-06T15:30:00Z', 'completed', { resultAvailability: 'upstream_error' }),
+  ]);
+  const vm = buildHomeVM(data([finished]), ctxLa, '2026-11-02');
+  const rows = vm.allSeries.flatMap((day) => day.rows);
+  const race = rows.find((row) => row.id === 'race');
+  assert.equal(race?.result?.availability, 'available');
+  assert.equal(race?.result?.previewKind, 'top_three');
+  assert.deepEqual(race?.result?.rows, [
+    { position: 1, name: 'Lando Norris', code: 'NOR', teamName: 'McLaren', teamColor: '#FF8000' },
+    { position: 2, name: 'George Russell', code: 'RUS', teamName: 'Mercedes', teamColor: '#00A19B' },
+    { position: 3, name: 'Andrea Kimi Antonelli', code: 'ANT' },
+  ]);
+  const practice = rows.find((row) => row.id === 'fp1');
+  assert.deepEqual(practice?.result, { availability: 'upstream_error' });
+});
+
+test('the track time zone of the API groups the weekend by track date, with a day offset for the viewer', () => {
+  const mexicoApi = {
+    ...round('f1:2026:mexico-city', 'Mexico City Grand Prix', '2026-10-30T18:30:00Z', [
+      session('fp1', 'practice', '2026-10-30T18:30:00Z', 'completed'),
+      session('race', 'race', '2026-11-01T20:00:00Z', 'completed'),
+    ]),
+    trackTimeZone: 'America/Mexico_City',
+  };
+  const tokyo = { userTimeZone: 'Asia/Tokyo', nowMs: Date.parse('2026-11-02T01:00:00Z'), followedSeriesIds: new Set<string>() };
+  const vm = buildHomeVM(data([mexicoApi]), tokyo, '2026-10-26');
+  const rows = vm.allSeries.flatMap((day) => day.rows.map((row) => ({ day: day.dayKey, id: row.id, offset: row.dayOffset })));
+  // Sunday 14:00 in Mexico City is Monday 05:00 in Tokyo: it stays on Sunday with +1 day.
+  assert.deepEqual(rows.find((row) => row.id === 'race'), { day: '2026-11-01', id: 'race', offset: 1 });
+  assert.equal(rows.find((row) => row.id === 'fp1')?.offset, 1);
 });

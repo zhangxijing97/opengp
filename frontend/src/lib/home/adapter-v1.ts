@@ -1,5 +1,6 @@
 import type { RoundSummary, RoundsListData, SessionSummary } from '../api-v1/types';
 import { happens } from './row-text';
+import { teamColour } from './team-theme';
 import { rowStatusOf, tierOf } from './tier';
 import { frontendSeriesId } from './series-theme';
 import type { DayScheduleVM, HomeVM, SessionRowVM } from './types';
@@ -22,17 +23,33 @@ export interface AdaptContext {
   nowMs: number;
   /** Frontend series ids the user follows. */
   followedSeriesIds: ReadonlySet<string>;
-  /** Track time zone of a round, when known. `/api/v1` does not provide it yet. */
+  /** Overrides the track time zone of a round. Without it the zone of the API (`round.trackTimeZone`) is used. */
   trackTimeZone?: (round: RoundSummary) => string | null;
 }
 
-/** API query for a week: from Monday to the Monday after, inclusive, so the Monday spill-over of the weekend is there. */
+/** API query for a week by track date (`dateBasis=track`): `from` is inclusive, `to` is the Monday after. */
 export function weekQueryRange(weekStart: string): { from: string; to: string } {
-  return { from: weekStart, to: addDays(weekStart, 8) };
+  return { from: weekStart, to: addDays(weekStart, 7) };
+}
+
+function resultOf(session: SessionSummary): NonNullable<SessionRowVM['result']> {
+  const preview = session.resultPreview;
+  if (!preview) return { availability: session.resultAvailability };
+  return {
+    availability: session.resultAvailability,
+    previewKind: preview.kind,
+    metricLabel: preview.metricLabel,
+    rows: preview.entries.map((entry) => ({
+      ...(entry.position !== null ? { position: entry.position } : {}),
+      name: entry.name,
+      ...(entry.code ? { code: entry.code } : {}),
+      ...(entry.teamName ? { teamName: entry.teamName, teamColor: teamColour(entry.teamName) } : {}),
+    })),
+  };
 }
 
 function trackZoneOf(round: RoundSummary, ctx: AdaptContext): string | null {
-  const zone = ctx.trackTimeZone ? ctx.trackTimeZone(round) : null;
+  const zone = ctx.trackTimeZone ? ctx.trackTimeZone(round) : round.trackTimeZone;
   // A zone the browser does not know is treated like an unknown zone, not as a crash.
   return zone !== null && isValidTimeZone(zone) ? zone : null;
 }
@@ -92,7 +109,7 @@ function placeSession(
     endsAt: validInstant(session.scheduledEndAt),
     dayOffset,
     starred: ctx.followedSeriesIds.has(frontendSeriesId(round.series.id)),
-    result: { availability: session.resultAvailability },
+    result: resultOf(session),
   };
   return {
     row,

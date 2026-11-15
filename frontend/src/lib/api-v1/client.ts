@@ -1,8 +1,12 @@
 import type {
   ApiMeta,
+  DateBasis,
   RoundDetailData,
   RoundsListData,
   SessionDetailData,
+  SessionResultsData,
+  StandingsResponseData,
+  StandingsSubjectType,
 } from './types';
 
 // Typed reads of the OpenGP backend. Unlike the legacy src/lib/api.ts, a failure is
@@ -90,11 +94,14 @@ export interface RoundsQuery {
   to: string;
   tz: string;
   seriesId?: string;
+  /** `track` groups a race weekend by the date at the venue (the Home week view); default `viewer`. */
+  dateBasis?: DateBasis;
 }
 
 export function getRounds(query: RoundsQuery): Promise<ApiResult<RoundsListData>> {
   const params = new URLSearchParams({ from: query.from, to: query.to, tz: query.tz });
   if (query.seriesId) params.set('seriesId', query.seriesId);
+  if (query.dateBasis) params.set('dateBasis', query.dateBasis);
   return apiGet<RoundsListData>(`/api/v1/rounds?${params.toString()}`);
 }
 
@@ -104,4 +111,19 @@ export function getRound(roundId: string): Promise<ApiResult<RoundDetailData>> {
 
 export function getSession(sessionId: string): Promise<ApiResult<SessionDetailData>> {
   return apiGet<SessionDetailData>(`/api/v1/sessions/${encodeURIComponent(sessionId)}`);
+}
+
+export function getSessionResults(sessionId: string): Promise<ApiResult<SessionResultsData>> {
+  return apiGet<SessionResultsData>(`/api/v1/sessions/${encodeURIComponent(sessionId)}/results`);
+}
+
+export interface StandingsQuery {
+  /** For example `f1:2026`. */
+  seasonId: string;
+  subjectType: StandingsSubjectType;
+}
+
+export function getStandings(query: StandingsQuery): Promise<ApiResult<StandingsResponseData>> {
+  const params = new URLSearchParams({ seasonId: query.seasonId, subjectType: query.subjectType });
+  return apiGet<StandingsResponseData>(`/api/v1/standings?${params.toString()}`);
 }

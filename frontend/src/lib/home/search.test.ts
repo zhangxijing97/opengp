@@ -22,6 +22,7 @@ function round(id: string, name: string, location: string): RoundSummary {
     roundNumber: null,
     circuit: null,
     locationLabel: location,
+    trackTimeZone: null,
     startsAt: null,
     endsAt: null,
     status: 'scheduled',

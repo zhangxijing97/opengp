@@ -2,17 +2,17 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { RoundSummary, SessionSummary } from '../api-v1/types';
 import { buildHomeVMFromRounds } from './adapter-v1';
-import { countsByDay, defaultWeek, primaryDays, sectionCount, visibleDays } from './home-model';
+import { countsByDay, primaryDays, sectionCount, visibleDays } from './home-model';
 
 function session(id: string, start: string, end: string | null, status: SessionSummary['lifecycle']['status'] = 'scheduled'): SessionSummary {
   return {
     id, roundId: 'f1:2026:mexico-city', name: id, type: 'practice', sequence: null, scheduledStartAt: start, scheduledDate: null,
-    schedulePrecision: 'instant', scheduledEndAt: end, lifecycle: { status, basis: 'time_inferred' }, resultAvailability: 'unknown', resultPreview: null,
+    schedulePrecision: 'instant', scheduledEndAt: end, localDate: null, trackLocalDate: null, trackTimeZone: null, dayOffset: null, lifecycle: { status, basis: 'time_inferred' }, resultAvailability: 'unknown', resultPreview: null,
   };
 }
 const mexico: RoundSummary = {
   id: 'f1:2026:mexico-city', seasonId: 'f1:2026', series: { id: 'f1', name: 'Formula 1' }, name: 'Mexico City Grand Prix',
-  roundNumber: 20, circuit: null, locationLabel: null, startsAt: '2026-10-30T18:30:00Z', endsAt: null, status: 'ongoing', statusBasis: 'time_inferred',
+  roundNumber: 20, circuit: null, locationLabel: null, trackTimeZone: null, startsAt: '2026-10-30T18:30:00Z', endsAt: null, status: 'ongoing', statusBasis: 'time_inferred',
   sessions: [
     session('fp1', '2026-10-30T18:30:00Z', null, 'completed'),
     session('fp2', '2026-10-30T22:00:00Z', null),
@@ -20,16 +20,6 @@ const mexico: RoundSummary = {
   ],
 };
 const zone = 'America/Los_Angeles';
-
-test('on Monday morning the weekend that is still running is the default week', () => {
-  assert.equal(defaultWeek([mexico], Date.parse('2026-11-02T18:00:00Z'), zone), '2026-10-26');
-});
-
-test('once it is over, or on any other day, the default week is this week', () => {
-  assert.equal(defaultWeek([mexico], Date.parse('2026-11-02T21:00:00Z'), zone), '2026-11-02');
-  assert.equal(defaultWeek([mexico], Date.parse('2026-10-31T18:00:00Z'), zone), '2026-10-26');
-  assert.equal(defaultWeek([], Date.parse('2026-11-02T18:00:00Z'), zone), '2026-11-02');
-});
 
 const ctx = (followed: string[]) => ({
   userTimeZone: zone,

@@ -18,6 +18,9 @@ export interface ResultRowVM {
   position?: number;
   positionText?: string;
   name: string;
+  /** Three-letter driver code. */
+  code?: string;
+  teamName?: string;
   carNumber?: string;
   teamColor?: string;
   gapOrTime?: string;
@@ -65,6 +68,10 @@ export interface SessionRowVM {
       | 'not_applicable'
       | 'unknown';
     publicationStatus?: 'unknown' | 'provisional' | 'final';
+    /** What the rows are: the top three, the pole sitter or the fastest of a practice. */
+    previewKind?: 'practice_leader' | 'pole' | 'winner' | 'top_three';
+    /** Best lap or pole time, for example "1:11.717". */
+    metricLabel?: string | null;
     classHeader?: string;
     rows?: ResultRowVM[];
     classWinners?: { classCode: string; name: string }[];

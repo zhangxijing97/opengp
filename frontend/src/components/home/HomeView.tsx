@@ -10,7 +10,7 @@ import { effectiveTimeZone, useSettings } from '../../lib/client-state/settings'
 import { buildHomeVMFromRounds } from '../../lib/home/adapter-v1';
 import { timeZoneLabel } from '../../lib/home/format';
 import type { HomeData } from '../../lib/home/home-data';
-import { countsByDay, defaultWeek, primaryDays, sectionCount, visibleDays } from '../../lib/home/home-model';
+import { countsByDay, primaryDays, sectionCount, visibleDays } from '../../lib/home/home-model';
 import { sessionCountLabel } from '../../lib/home/labels';
 import { themeById } from '../../lib/home/series-theme';
 import type { DayScheduleVM } from '../../lib/home/types';
@@ -26,10 +26,10 @@ import { TimeSelector } from './TimeSelector';
 // The Home (page 05 of the design): series lists on the left, the schedule in the middle, standings on
 // the right, on the 288 / 648 / 288 grid.
 //
-// The server loaded the rounds of three weeks in UTC (it does not know the visitor's time zone). Here,
-// in the browser, they are grouped into days in the visitor's zone, which is why this is a client
-// component: the first render uses UTC and the server's clock, so it matches the server's HTML, and the
-// real zone arrives right after. Series without data answer with no rounds (src/lib/home/series-sources.ts).
+// The server loaded ONE week by track date, in UTC (it does not know the visitor's time zone), and the
+// standings. Here, in the browser, the sessions are grouped into days in the visitor's zone, which is why this
+// is a client component: the first render uses UTC and the server's clock, so it matches the server's HTML,
+// and the real zone arrives right after. Series without data answer with no rounds (series-sources.ts).
 
 function Hint({ children }: { children: ReactNode }) {
   return <p className="text-footer-body px-2 text-text-secondary">{children}</p>;
@@ -138,22 +138,25 @@ export function HomeView({ data }: { data: HomeData }) {
   const hydrated = useHydrated();
   const nowMs = useNow(data.renderedAtMs);
   const userTimeZone = hydrated ? effectiveTimeZone(settings) : 'UTC';
-  const week = data.weekParam ?? defaultWeek(data.rounds, nowMs, userTimeZone);
 
-  // The status of a session (live, finished) comes from the server's clock. Ask the server again every
-  // minute while the page is open and visible.
+  // The status of a session (live, finished) comes from the server's clock. While a session is in progress and the
+  // page is open and visible, ask the server again every minute. Without a live session nothing is refreshed.
+  const hasLive = data.rounds.some((round) =>
+    round.sessions.some((session) => session.lifecycle.status === 'in_progress'),
+  );
   useEffect(() => {
+    if (!hasLive) return;
     const id = window.setInterval(() => {
       if (document.visibilityState === 'visible') router.refresh();
     }, 60_000);
     return () => window.clearInterval(id);
-  }, [router]);
+  }, [hasLive, router]);
 
   return (
     <div className="mx-auto flex w-(--layout-page-width) items-start gap-6 px-(--space-page) pt-6 pb-12">
       <SeriesSidebar />
-      <WeekView key={week} week={week} data={data} nowMs={nowMs} userTimeZone={userTimeZone} />
-      <StandingsPanel />
+      <WeekView key={data.week} week={data.week} data={data} nowMs={nowMs} userTimeZone={userTimeZone} />
+      <StandingsPanel standings={data.standings} />
     </div>
   );
 }

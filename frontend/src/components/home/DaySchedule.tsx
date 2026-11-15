@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { MIN_CARD_HEIGHT, MIN_STUB_FOOTER_HEIGHT, rowKindOf, ticketHeight } from '../../lib/home/row-layout';
+import { MIN_CARD_HEIGHT, MIN_STUB_FOOTER_HEIGHT, hasPodium, rowKindOf, ticketHeight } from '../../lib/home/row-layout';
 import { STUB, buildTicketShape } from '../../lib/home/ticket-shape';
 import type { DayScheduleVM } from '../../lib/home/types';
 import { SessionRow } from './SessionRow';
@@ -21,7 +21,7 @@ export function DaySchedule({ day }: { day: DayScheduleVM }) {
   const computed = ticketHeight(
     rows.flatMap((row) => {
       const kind = rowKindOf(row.tier);
-      return kind ? [{ kind, state: row.state }] : [];
+      return kind ? [{ kind, state: row.state, podium: hasPodium(row) }] : [];
     }),
   );
   const [measured, setMeasured] = useState<number | null>(null);

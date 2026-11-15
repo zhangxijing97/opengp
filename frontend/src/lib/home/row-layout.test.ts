@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { MIN_CARD_HEIGHT, MIN_STUB_FOOTER_HEIGHT, cardHeight, rowHeight, rowKindOf, ticketHeight } from './row-layout';
+import { MIN_CARD_HEIGHT, MIN_STUB_FOOTER_HEIGHT, cardHeight, hasPodium, rowHeight, rowKindOf, ticketHeight } from './row-layout';
 
 test('tiers map to the two row layouts, sub-sessions have none', () => {
   assert.equal(rowKindOf('T1'), 'multi');
@@ -39,4 +39,21 @@ test('a ticket is never shorter than its stub needs, and never shorter than its 
   assert.equal(ticketHeight(tall), 245);
   // the stub text ends at y 79 and the month needs room below it
   assert.ok(MIN_CARD_HEIGHT >= 79 + 14);
+});
+
+test('a finished main race with a top three has a podium and is 114px high', () => {
+  const withRows = { rows: [{ name: 'A' }] };
+  assert.equal(hasPodium({ tier: 'T1', state: 'done', result: withRows }), true);
+  assert.equal(hasPodium({ tier: 'T1', state: 'done', result: { rows: [] } }), false);
+  assert.equal(hasPodium({ tier: 'T1', state: 'done' }), false);
+  assert.equal(hasPodium({ tier: 'T1', state: 'idle', result: withRows }), false);
+  assert.equal(hasPodium({ tier: 'T2', state: 'done', result: withRows }), false);
+  assert.equal(rowHeight('multi', 'done', true, true), 114);
+  assert.equal(rowHeight('multi', 'done', false, true), 114);
+  assert.equal(rowHeight('multi', 'done', false), 69);
+  assert.equal(rowHeight('single', 'done', false, true), 41);
+});
+
+test('a card with a podium row and a qualifying row adds up', () => {
+  assert.equal(cardHeight([{ kind: 'multi', state: 'done', podium: true }, { kind: 'multi', state: 'done' }]), 114 + 69);
 });
