@@ -1,0 +1,236 @@
+/* OpenGP design tokens, application copy.
+ *
+ * Source: docs/design/tokens.css, generated from the Figma handoff page (section 3).
+ *   Figma file 4ZHA4lgk5NbZDFzMoMUsSH, page "05 · Dev Handoff · 前端交接". Details: docs/design/HANDOFF.md.
+ * Every value equals the source. The differences below exist for Tailwind v4 and next/font (M1, 2026-11-14):
+ *   1. Colours, radii and the shadow live in "@theme static": they become Tailwind theme variables
+ *      (bg-brand-indigo, rounded-surface, shadow-attached) and are always emitted as CSS variables.
+ *   2. --radius-full stays a plain variable: registering it would redefine Tailwind's built-in rounded-full.
+ *   3. --space-* and --layout-* stay plain variables (HANDOFF.md section 6, M1).
+ *   4. The --space-off-* group is new: off-scale spacing kept 1:1 with the design (HANDOFF.md section 5, item C).
+ *   5. The font family variables are mapped to the next/font variables inside ".og-root". A var() reference is
+ *      resolved on the element that declares it, so the mapping must sit where the next/font classes are applied
+ *      and cannot live in :root. Put "og-root" and designFontVariables (src/styles/fonts.ts) on the layout
+ *      wrapper of every route that uses these tokens.
+ *   6. The .text-* classes sit in "@layer components", so Tailwind utilities can override them.
+ *   7. The old globals.css resets a and button without a cascade layer, and an unlayered rule beats every layered
+ *      rule (Tailwind utilities and the .text-* classes). Inside ".og-root" those two resets are rolled back with
+ *      revert-layer, so utilities and text styles reach links and buttons (see "Integration" on /dev/tokens).
+ *   8. Added with the shell and the undrawn pages (2026-11-14): --blur-glass (the 20px of the nav glass, Figma
+ *      section 3 A1), .og-canvas (the 1440 desktop canvas), a keyboard focus ring and reduced-motion rules.
+ *      The focus ring is not drawn in the design: TODO(design).
+ * Items marked "Contrast TBD" are known to be below 4.5:1 (HANDOFF.md section 5, item E).
+ * src/app/dev/tokens/page.tsx reads this file: keep one declaration per line and one .text-* rule per line. */
+
+@theme static {
+  /* ---- colour ---- */
+  --color-brand-indigo: #4652e5; /* Brand indigo: buttons, light-mode text, bars, selected text */
+  --color-brand-indigo-light: #e9eafc; /* Selected background, non-today ticket stub */
+  --color-brand-indigo-dark: #6a73ea; /* Dark-mode indigo. RESERVED, not used yet */
+  --color-brand-amber: #f59e0b; /* Primary button, today ticket stub, nav bottom line, yellow progress */
+  --color-brand-amber-light: #fef1dd; /* Light amber: hairlines, tag backgrounds */
+  --color-brand-ink: #121212; /* Ink: plates, stamps, button text. Same value as text-primary */
+  --color-surface-page: #f4f4f4; /* Page background */
+  --color-surface-card: #ffffff; /* Cards, rows */
+  --color-surface-header: #fafafa; /* Header strip of the sidebar series lists */
+  --color-surface-inset: #f5f5f5; /* Result card, Drivers/Teams track, standings arrow buttons */
+  --color-surface-track: #e8e8e8; /* Week track */
+  --color-border-default: #e5e5e5; /* 1px card outline, hole outline */
+  --color-border-separator: #f5f5f5; /* 1px full-width separator drawn on the TOP edge of each row (not the first row) */
+  --color-border-keyline: #cfcfcf; /* 1px outline outside the footer sticker */
+  --color-border-segment: #c9c9c9; /* Outline of unfinished season-ruler segments */
+  --color-dot-inactive: #d4d4d4; /* Inactive carousel dots */
+  --color-text-primary: #121212; /* Primary text (same value as brand-ink) */
+  --color-text-secondary: #525252; /* Secondary text */
+  --color-text-tertiary: #737373; /* Meta text: times, captions. Contrast TBD (open question) */
+  --color-text-disabled: #a3a3a3; /* Past dates in the week strip. Contrast TBD */
+  --color-text-on-brand: #ffffff; /* White text on indigo or ink */
+  --color-text-brand: #4652e5; /* Selected-state indigo text */
+  --color-text-amber: #a76607; /* Amber text: P1 label, '6 left', Yellow flag, RESCHEDULED. Contrast TBD */
+  --color-status-live: #16a34a; /* LIVE text, live progress, 'Can still win'. As TEXT it is 3.3:1; a text variant #15803D is suggested. Contrast TBD */
+  --color-flag-red: #dc2626; /* Red flag text and progress */
+  --color-flag-yellow: #f59e0b; /* Yellow-family progress bars (text uses text-amber) */
+  --color-position-1: #a76607; /* P1 label (alias of text-amber) */
+  --color-position-2: #64748b; /* P2 label. Contrast TBD */
+  --color-position-3: #b45309; /* P3 label */
+  --color-icon-primary: #121212; /* Icon strokes */
+  --color-icon-muted: #8c8c8c; /* Unselected star outline */
+  --color-icon-subtle: #a3a3a3; /* Collapse arrows etc. */
+  --color-icon-quiet: #737373; /* Rare secondary icons */
+  --color-nav-glass: rgb(27 42 225 / 0.8); /* #1B2AE1 at 80% opacity. Top nav only (translucent, not a normal surface). Pair with a 20px background blur: backdrop-filter: blur(20px) */
+
+  /* series colours (plate band). Series colour is DATA (series.color); these are the values in the design. */
+  --color-series-gtwc-eu: #7c3aed;
+  --color-series-gtwc-am: #2563eb;
+  --color-series-f1: #dc2626;
+  --color-series-motogp: #be123c;
+  --color-series-wec: #0f766e;
+  --color-series-nascar: #ca8a04;
+  --color-series-indycar: #334155;
+  --color-series-formula-e: #0284c7;
+
+  /* ---- radius ---- */
+  --radius-segment: 1.5px; /* season-ruler segments */
+  --radius-micro: 4px; /* small plate inside the series plate, '/' key chip */
+  --radius-plate: 6px; /* series plate outer frame */
+  --radius-pill: 8px; /* selected pill (24px tall) */
+  --radius-track: 10px; /* Drivers/Teams track (30px tall) */
+  --radius-control: 12px; /* search field, buttons (36px tall), icon button, result / podium cards, week cell (nested in the week track: 16 - 4 = 12) */
+  --radius-container: 16px; /* week track */
+  --radius-surface: 24px; /* sidebar lists, day schedule, standings, footer sticker */
+
+  /* ---- shadow (the ONLY shadow: attached objects = footer sticker + selected pills) ---- */
+  --shadow-attached: 0 1px 3px rgb(0 0 0 / 0.10), 0 1px 1px rgb(0 0 0 / 0.08);
+
+  /* ---- blur ---- */
+  --blur-glass: 20px; /* Top nav glass: background blur (backdrop-blur-glass) */
+}
+
+:root {
+  --radius-full: 999px; /* circular elements. Not in @theme on purpose (header, point 2) */
+
+  /* ---- spacing scale (auto layout gap and padding) ---- */
+  --space-2: 2px;
+  --space-4: 4px;
+  --space-6: 6px;
+  --space-8: 8px;
+  --space-10: 10px;
+  --space-12: 12px;
+  --space-16: 16px;
+  --space-20: 20px;
+  --space-24: 24px;
+  --space-page: 84px; /* page side margin */
+
+  /* ---- off-scale spacing, kept 1:1 with the design (open question C). Name = --space-off-<px>, "_" is the decimal point ---- */
+  --space-off-1_5: 1.5px; /* Plate padding. 184 uses in the design */
+  --space-off-3: 3px; /* 67 uses */
+  --space-off-5: 5px; /* 126 uses */
+  --space-off-7: 7px; /* 45 uses */
+  --space-off-9: 9px; /* 105 uses */
+  --space-off-13: 13px; /* 25 uses */
+  --space-off-14: 14px; /* 94 uses */
+
+  /* ---- layout: 1440 = 84 + 288 + 24 + 648 + 24 + 288 + 84 (grid module 24px). Desktop only; no mobile design yet ---- */
+  --layout-page-width: 1440px;
+  --layout-col-side: 288px;
+  --layout-col-main: 648px;
+  --layout-col-gap: 24px;
+  --layout-stub-width: 56px;
+}
+
+@layer base {
+  .og-root {
+    --font-sans: var(--font-body, "Inter"), system-ui, sans-serif; /* Inter (root layout, --font-body): interface text */
+    --font-data: var(--font-display, "Rajdhani"), system-ui, sans-serif; /* Rajdhani (root layout, --font-display): standings numbers, driver names, podium */
+    --font-condensed: var(--font-barlow-condensed, "Barlow Condensed"), "Arial Narrow", sans-serif; /* Barlow Condensed (fonts.ts): plates, ticket stub, buttons */
+    --font-brand: var(--font-barlow, "Barlow"), system-ui, sans-serif; /* Barlow (fonts.ts): only the OpenGP wordmark */
+    color: var(--color-text-primary);
+    font-family: var(--font-sans);
+  }
+
+  /* Keyboard focus. In the base layer, so a utility such as outline-none can still override it. */
+  .og-root :where(a, button, input, select, textarea, summary):focus-visible {
+    outline: 2px solid var(--color-brand-indigo);
+    outline-offset: 2px;
+  }
+
+  /* On the indigo nav and footer the ring is white. */
+  .og-nav :where(a, button, input, select):focus-visible {
+    outline-color: var(--color-text-on-brand);
+  }
+}
+
+/* Roll back the old unlayered resets of globals.css inside the design root (header, point 7). */
+.og-root a {
+  color: revert-layer;
+  text-decoration: revert-layer;
+}
+
+.og-root button {
+  font: revert-layer;
+}
+
+/* The desktop page of the design. It is at least 1440 wide and takes the whole width of the window: the nav and
+   the footer run edge to edge, the content stays on the 1440 grid (centre it with mx-auto and a 1440 width). A
+   column, so a short page keeps the footer at the bottom (give the content element flex-1). Below 1440 the page
+   scrolls sideways because mobile is not designed (HANDOFF.md section 5). */
+.og-canvas {
+  display: flex;
+  flex-direction: column;
+  min-width: var(--layout-page-width);
+  min-height: 100vh;
+  background: var(--color-surface-page);
+}
+
+/* The values of --shadow-attached as a drop shadow, for shapes that are not rectangles (the footer sticker). */
+.og-sticker-shadow {
+  filter: drop-shadow(0 1px 3px rgb(0 0 0 / 0.10)) drop-shadow(0 1px 1px rgb(0 0 0 / 0.08));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .og-root *,
+  .og-root *::before,
+  .og-root *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ---- text styles (53). Weights: Regular 400, Medium 500, Semi Bold 600, Bold 700, ExtraBold 800. ---- */
+@layer components {
+  .text-row-title { font-family: var(--font-sans); font-weight: 600; font-size: 15px; line-height: 1.4; letter-spacing: -0.02em; } /* Event name in multi-line rows */
+  .text-row-title-sm { font-family: var(--font-sans); font-weight: 500; font-size: 13px; line-height: 1.4; letter-spacing: -0.01em; } /* Event name in single-line rows */
+  .text-row-session { font-family: var(--font-sans); font-weight: 500; font-size: 12px; line-height: 1.4; letter-spacing: 0; } /* Session name */
+  .text-row-meta { font-family: var(--font-sans); font-weight: 500; font-size: 12px; line-height: normal; letter-spacing: 0; } /* Time left / status text */
+  .text-row-live { font-family: var(--font-sans); font-weight: 700; font-size: 11px; line-height: normal; letter-spacing: 0.06em; } /* LIVE and RED FLAG labels */
+  .text-row-result-label { font-family: var(--font-sans); font-weight: 600; font-size: 11px; line-height: normal; letter-spacing: 0; } /* P1 / P2 / P3 / Fastest labels */
+  .text-row-result-name { font-family: var(--font-sans); font-weight: 500; font-size: 13px; line-height: normal; letter-spacing: 0; } /* Result name in single-line rows */
+  .text-list-item { font-family: var(--font-sans); font-weight: 500; font-size: 13px; line-height: 1.4; letter-spacing: 0; } /* Sidebar series item */
+  .text-card-title { font-family: var(--font-sans); font-weight: 600; font-size: 14px; line-height: 1.4; letter-spacing: -0.01em; } /* Sidebar list header */
+  .text-section-count { font-family: var(--font-sans); font-weight: 400; font-size: 13px; line-height: 1.4; letter-spacing: 0; } /* '15 sessions this week' */
+  .text-caption { font-family: var(--font-sans); font-weight: 400; font-size: 12px; line-height: 1.4; letter-spacing: 0; } /* 'This week · times in PT' */
+  .text-week-label { font-family: var(--font-sans); font-weight: 600; font-size: 10px; line-height: 1.4; letter-spacing: 0.06em; } /* WEEK / MON / TUE ... */
+  .text-week-sub { font-family: var(--font-sans); font-weight: 500; font-size: 10px; line-height: 1.4; letter-spacing: 0; } /* 'sessions' under the number */
+  .text-table-head { font-family: var(--font-sans); font-weight: 600; font-size: 10px; line-height: 1.4; letter-spacing: 0.04em; } /* Standings table header */
+  .text-footer-body { font-family: var(--font-sans); font-weight: 400; font-size: 13px; line-height: 1.5; letter-spacing: 0; } /* Footer tagline and links */
+  .text-footer-legal { font-family: var(--font-sans); font-weight: 400; font-size: 12px; line-height: 1.5; letter-spacing: 0; } /* Footer legal links */
+  .text-start-sub { font-family: var(--font-sans); font-weight: 400; font-size: 11px; line-height: 1.4; letter-spacing: 0; } /* 'ends ~4:00 AM', 'Can still win' */
+  .text-row-time { font-family: var(--font-sans); font-weight: 400; font-size: 12px; line-height: normal; letter-spacing: 0; } /* ' · 3:00 AM' after the session name */
+  .text-section-title { font-family: var(--font-sans); font-weight: 600; font-size: 16px; line-height: 1.4; letter-spacing: -0.025em; } /* Following / All series */
+  .text-group-label { font-family: var(--font-sans); font-weight: 600; font-size: 11px; line-height: normal; letter-spacing: 0.06em; } /* PRO / CLASS WINNERS */
+  .text-week-status { font-family: var(--font-sans); font-weight: 600; font-size: 10px; line-height: 1.4; letter-spacing: 0; } /* '6 left' in the week cell */
+  .text-series-title { font-family: var(--font-sans); font-weight: 600; font-size: 16px; line-height: 1.4; letter-spacing: -0.01em; } /* Standings title */
+  .text-season-note { font-family: var(--font-sans); font-weight: 500; font-size: 11px; line-height: normal; letter-spacing: 0; } /* '4 to go' */
+  .text-segment-selected { font-family: var(--font-sans); font-weight: 600; font-size: 11px; line-height: 16px; letter-spacing: 0; } /* Selected Drivers/Teams label */
+  .text-segment { font-family: var(--font-sans); font-weight: 500; font-size: 11px; line-height: 16px; letter-spacing: 0; } /* Unselected Drivers/Teams label */
+  .text-footer-fine { font-family: var(--font-sans); font-weight: 400; font-size: 11px; line-height: 1.5; letter-spacing: 0; } /* Footer disclaimer */
+  .text-tag { font-family: var(--font-sans); font-weight: 700; font-size: 10px; line-height: 1.5; letter-spacing: 0.06em; } /* RESCHEDULED tag */
+  .text-week-date { font-family: var(--font-data); font-weight: 600; font-size: 18px; line-height: 1.15; letter-spacing: 0; } /* Week cell date number */
+  .text-week-date-strong { font-family: var(--font-data); font-weight: 700; font-size: 18px; line-height: 1.15; letter-spacing: 0; } /* Selected / today date number */
+  .text-table-pos { font-family: var(--font-data); font-weight: 700; font-size: 14px; line-height: 1.1; letter-spacing: 0; } /* Standings position */
+  .text-table-driver { font-family: var(--font-data); font-weight: 600; font-size: 14px; line-height: 1.15; letter-spacing: 0.03em; } /* Standings driver name */
+  .text-table-stat { font-family: var(--font-data); font-weight: 600; font-size: 14px; line-height: 1.15; letter-spacing: 0.02em; } /* Standings wins / podiums */
+  .text-table-points { font-family: var(--font-data); font-weight: 700; font-size: 14px; line-height: 1.15; letter-spacing: 0.02em; } /* Standings points */
+  .text-podium-name { font-family: var(--font-data); font-weight: 700; font-size: 14px; line-height: normal; letter-spacing: 0; } /* Rank bar name */
+  .text-podium-name-lg { font-family: var(--font-data); font-weight: 700; font-size: 15px; line-height: normal; letter-spacing: 0; } /* Large rank name */
+  .text-class-winner { font-family: var(--font-data); font-weight: 700; font-size: 13px; line-height: normal; letter-spacing: 0; } /* Class winner name */
+  .text-roundel { font-family: var(--font-data); font-weight: 700; font-size: 12px; line-height: 1; letter-spacing: 0; } /* Position inside roundel */
+  .text-start-time { font-family: var(--font-data); font-weight: 700; font-size: 20px; line-height: 1.15; letter-spacing: 0.03em; } /* Start time in multi-line upcoming rows */
+  .text-start-time-sm { font-family: var(--font-data); font-weight: 700; font-size: 15px; line-height: 1.15; letter-spacing: 0.03em; } /* Start time in single-line upcoming rows */
+  .text-range-title { font-family: var(--font-data); font-weight: 700; font-size: 20px; line-height: 1.2; letter-spacing: 0.02em; } /* 'Oct 26 – Nov 1' */
+  .text-plate-code { font-family: var(--font-condensed); font-weight: 800; font-size: 13px; line-height: 16px; letter-spacing: 0.5px; } /* Series plate code */
+  .text-stub-dow { font-family: var(--font-condensed); font-weight: 700; font-size: 12px; line-height: 1; letter-spacing: 0; } /* SAT / SUN on the stub */
+  .text-stub-day { font-family: var(--font-condensed); font-weight: 800; font-size: 34px; line-height: 1; letter-spacing: 0; } /* Day number on the stub */
+  .text-stub-month { font-family: var(--font-condensed); font-weight: 600; font-size: 10px; line-height: 1; letter-spacing: 2.4px; } /* OCT / NOV on the stub */
+  .text-stub-count { font-family: var(--font-condensed); font-weight: 800; font-size: 20px; line-height: 1; letter-spacing: 0; } /* Session count on the stub */
+  .text-stub-caption { font-family: var(--font-condensed); font-weight: 600; font-size: 9px; line-height: 1; letter-spacing: 1px; } /* SESSIONS on the stub */
+  .text-cta { font-family: var(--font-condensed); font-weight: 800; font-size: 15px; line-height: 1.4; letter-spacing: 1.6px; } /* SIGN IN / BACK TO GRID */
+  .text-footer-heading { font-family: var(--font-condensed); font-weight: 800; font-size: 13px; line-height: 1.5; letter-spacing: 2px; } /* PRODUCT / DATA / COMPANY */
+  .text-stamp { font-family: var(--font-condensed); font-weight: 700; font-size: 10px; line-height: 1; letter-spacing: 1.4px; } /* TODAY stamp */
+  .text-round-label { font-family: var(--font-condensed); font-weight: 600; font-size: 12px; line-height: normal; letter-spacing: 0.1em; } /* ROUND */
+  .text-round-number { font-family: var(--font-condensed); font-weight: 700; font-size: 20px; line-height: normal; letter-spacing: 0; } /* Round number */
+  .text-round-total { font-family: var(--font-condensed); font-weight: 600; font-size: 13px; line-height: normal; letter-spacing: 0; } /* '/ 24' */
+  .text-wordmark { font-family: var(--font-brand); font-weight: 500; font-size: 22px; line-height: 1; letter-spacing: -0.01em; } /* OpenGP wordmark */
+}
