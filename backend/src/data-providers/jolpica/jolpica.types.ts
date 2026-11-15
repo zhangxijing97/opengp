@@ -68,3 +68,58 @@ export interface JolpicaFetchResult<T> {
   items: T[];
   retrievedAt: string;
 }
+
+export interface JolpicaDriver {
+  driverId: string;
+  permanentNumber?: string;
+  code?: string;
+  givenName: string;
+  familyName: string;
+}
+
+export interface JolpicaConstructor {
+  constructorId: string;
+  name: string;
+}
+
+/** One row of Race or Sprint results. */
+export interface JolpicaResultRow {
+  number?: string;
+  position?: string;
+  positionText: string;
+  points?: string;
+  Driver: JolpicaDriver;
+  Constructor?: JolpicaConstructor;
+  grid?: string;
+  laps?: string;
+  status?: string;
+  Time?: { millis?: string; time?: string };
+  FastestLap?: { Time?: { time?: string } };
+}
+
+export interface JolpicaQualifyingRow {
+  number?: string;
+  position?: string;
+  Driver: JolpicaDriver;
+  Constructor?: JolpicaConstructor;
+  Q1?: string;
+  Q2?: string;
+  Q3?: string;
+}
+
+export interface JolpicaStandingRow {
+  position?: string;
+  positionText?: string;
+  points: string;
+  wins?: string;
+  Driver?: JolpicaDriver;
+  Constructor?: JolpicaConstructor;
+  Constructors?: JolpicaConstructor[];
+}
+
+export interface JolpicaStandingsResult {
+  /** Round the standings are "as of"; null when no standings exist yet. */
+  round: number | null;
+  rows: JolpicaStandingRow[];
+  retrievedAt: string;
+}

@@ -17,3 +17,11 @@ do not add images, logos or media to fixtures.
 
 Before marking any behaviour **Verified**, capture real responses in a
 separate, reviewed task and record URL, retrieval time and SHA-256.
+
+## Result and standings fixtures (2026-11)
+
+| File | Content |
+| --- | --- |
+| `jolpica-results.fixtures.ts` | 2025 Chinese GP race / sprint / qualifying rows. W02-V outcomes: Piastri won; Leclerc and Hamilton disqualified (Gasly omitted for brevity); Alonso retired; Hamilton won the Sprint with 19 laps and 8 points. Lap times, gaps, the 2021 Belgian "12.5" row, the 2024 Brazil "W" row and all standings tables are **SYNTHETIC**. |
+| `openf1-results.fixtures.ts` | 2025 Chinese GP FP1 (9988) and Sprint Qualifying (9989). W02-V: Norris P1 in FP1 with 23 laps and 91.504 s; Hadjar P15 with `dnf=true` and `[92.171, null, null]` in SQ. Other rows **SYNTHETIC**. |
+| `jolpica.fixtures.ts` → `JOLPICA_2026_LAS_VEGAS` | Race instant as published by Jolpica (2026-11-22T04:00Z = Saturday evening local); practice and qualifying times **SYNTHETIC**. |

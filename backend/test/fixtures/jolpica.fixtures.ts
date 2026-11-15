@@ -163,3 +163,22 @@ export const JOLPICA_2026_MEXICO_CITY = {
   ThirdPractice: { date: '2026-10-31', time: '17:30:00Z' },
   Qualifying: { date: '2026-10-31', time: '21:00:00Z' },
 };
+
+/** 2026 Las Vegas GP. Race instant per Jolpica (2026-11-22T04:00Z = Sat 21 Nov, 20:00 PST); other times SYNTHETIC. */
+export const JOLPICA_2026_LAS_VEGAS = {
+  season: '2026',
+  round: '22',
+  raceName: 'Las Vegas Grand Prix',
+  Circuit: circuit(
+    'vegas',
+    'Las Vegas Strip Street Circuit',
+    'Las Vegas',
+    'USA',
+  ),
+  date: '2026-11-22',
+  time: '04:00:00Z',
+  FirstPractice: { date: '2026-11-20', time: '00:30:00Z' },
+  SecondPractice: { date: '2026-11-20', time: '04:00:00Z' },
+  ThirdPractice: { date: '2026-11-21', time: '00:30:00Z' },
+  Qualifying: { date: '2026-11-21', time: '04:00:00Z' },
+};

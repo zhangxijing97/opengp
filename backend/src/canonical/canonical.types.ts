@@ -69,6 +69,10 @@ export interface CanonicalSession {
   schedulePrecision: SchedulePrecision;
   /** Planned end from the provider schedule; never an actual end time. */
   scheduledEndAt: string | null;
+  /** IANA time zone of the venue, from a reviewed table; null if unknown. */
+  trackTimeZone: string | null;
+  /** Calendar date at the venue when the session starts; null if unknown. */
+  trackLocalDate: string | null;
   /** Explicit provider cancellation marker; null when no provider says so. */
   cancelled: boolean | null;
   /** First season for which the result provider claims coverage. */
@@ -90,6 +94,8 @@ export interface CanonicalRound {
   roundNumber: number | null;
   circuit: { id: string; name: string } | null;
   locationLabel: string | null;
+  /** IANA time zone of the venue, from a reviewed table; null if unknown. */
+  trackTimeZone: string | null;
   /** Earliest known scheduled session start. */
   startsAt: string | null;
   /** Latest known *planned* session end (OpenF1 schedule); null if unknown. */

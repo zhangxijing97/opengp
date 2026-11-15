@@ -11,6 +11,7 @@ function parseOk(input: {
   from: unknown;
   to: unknown;
   tz: unknown;
+  dateBasis?: unknown;
 }): LocalDateInterval {
   const result = parseLocalDateInterval(input);
   if (!result.ok) throw new Error(result.errors.join(' | '));
@@ -21,6 +22,7 @@ function parseErrors(input: {
   from: unknown;
   to: unknown;
   tz: unknown;
+  dateBasis?: unknown;
 }): string[] {
   const result = parseLocalDateInterval(input);
   return result.ok ? [] : result.errors;
@@ -67,6 +69,29 @@ describe('parseLocalDateInterval', () => {
     expect(
       parseErrors({ from: '2026-10-26', to: '2026-11-02', tz: '+08:00' }),
     ).toHaveLength(1);
+  });
+
+  it('accepts dateBasis viewer (default) or track and rejects anything else', () => {
+    expect(
+      parseOk({ from: '2026-10-26', to: '2026-11-02', tz: undefined })
+        .dateBasis,
+    ).toBe('viewer');
+    expect(
+      parseOk({
+        from: '2026-10-26',
+        to: '2026-11-02',
+        tz: undefined,
+        dateBasis: 'track',
+      }).dateBasis,
+    ).toBe('track');
+    expect(
+      parseErrors({
+        from: '2026-10-26',
+        to: '2026-11-02',
+        tz: undefined,
+        dateBasis: 'venue',
+      })[0],
+    ).toContain('dateBasis');
   });
 
   it('enforces from < to and the 31-day maximum', () => {

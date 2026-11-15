@@ -6,6 +6,9 @@
 // - cooldown: after a failure, upstream is not called again until the
 //           cooldown ends; the failure is re-reported (never turned into an
 //           empty success) unless a usable stale value exists.
+// - refreshInBackground (optional): within the stale window, serve the
+//           previous value immediately and refresh it in the background
+//           (stale-while-revalidate, RFC 5861 style).
 // Concurrent reads of the same key share one upstream call.
 
 export interface SnapshotPolicy {
@@ -13,6 +16,8 @@ export interface SnapshotPolicy {
   maxStaleMs: number;
   failureCooldownMs: (error: Error) => number;
   describeFailure: (error: Error) => string;
+  /** Serve usable data at once and refresh it in the background. */
+  refreshInBackground?: boolean;
 }
 
 export interface SnapshotRead<T> {
@@ -82,8 +87,27 @@ export class SnapshotStore<T> {
     }
 
     const pending = this.inFlight.get(key);
+    if (usable && policy.refreshInBackground) {
+      if (!pending) {
+        // Errors are recorded by refresh() and surface on later reads.
+        this.startRefresh(key, loader, policy, usable).catch(() => undefined);
+      }
+      return Promise.resolve({
+        value: usable.value,
+        retrievedAt: usable.retrievedAt,
+        stale: false,
+      });
+    }
     if (pending) return pending;
+    return this.startRefresh(key, loader, policy, usable);
+  }
 
+  private startRefresh(
+    key: string,
+    loader: SnapshotLoader<T>,
+    policy: SnapshotPolicy,
+    usable: Snapshot<T> | null,
+  ): Promise<SnapshotRead<T>> {
     const request = this.refresh(key, loader, policy, usable).finally(() => {
       this.inFlight.delete(key);
     });

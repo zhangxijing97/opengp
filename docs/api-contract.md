@@ -1,6 +1,6 @@
 # OpenGP — HTTP API Contract v1
 
-> **Status:** Partially implemented (2026-10-31): `/series`, `/series/:seriesId/seasons`, `/rounds`, `/rounds/:roundId` and `/sessions/:sessionId` are live under `/api/v1` for F1; results and standings are not yet implemented. Examples: [`api-guide.md`](./api-guide.md). For the internal entity model see [`data-model.md`](./data-model.md); for upstream data see [`f1-data-providers.md`](./f1-data-providers.md).
+> **Status:** Implemented for F1 (2026-11-15): all endpoints in section 2 except `/participants/:participantId`. Additive fields (`dateBasis`, `trackLocalDate`, `dayOffset`, `canStillWin`, `progress`) are described in [`api-guide.md`](./api-guide.md). For the internal entity model see [`data-model.md`](./data-model.md); for upstream data see [`f1-data-providers.md`](./f1-data-providers.md).
 
 ## 1. Existing endpoints (current source code)
 
@@ -25,11 +25,11 @@ Base prefix: `/api/v1`. Date-only inputs use `YYYY-MM-DD`; timestamps are ISO 86
 | --- | --- | --- | --- |
 | GET | `/series` | Supported series, not aspirational unimplemented ones | Implemented (F1) |
 | GET | `/series/:seriesId/seasons` | Seasons with coverage (no pagination yet) | Implemented (F1) |
-| GET | `/rounds` | Rounds with nested sessions; `from` (inclusive) and `to` (exclusive) local dates, `tz?`, `seriesId?`; max 31 days | Implemented (F1) |
+| GET | `/rounds` | Rounds with nested sessions; `from` (inclusive) and `to` (exclusive) local dates, `tz?`, `seriesId?`, `dateBasis=viewer\|track?`; max 31 days | Implemented (F1) |
 | GET | `/rounds/:roundId` | One Round with all sessions | Implemented (F1) |
 | GET | `/sessions/:sessionId` | One session's schedule/lifecycle | Implemented (F1) |
-| GET | `/sessions/:sessionId/results` | Published results or explicit availability | Not yet |
-| GET | `/standings` | `seasonId` required; `subjectType=driver\|team`, `asOfRoundId?` optional | Not yet |
+| GET | `/sessions/:sessionId/results` | Published results or explicit availability | Implemented (F1) |
+| GET | `/standings` | `seasonId` required; `subjectType=driver\|team`, `asOfRoundId?` optional | Implemented (F1) |
 | GET | `/participants/:participantId` | Global person identity and series participation; **defer until identity matching is supported** | Deferred |
 
 **Scope:** v1 implementing F1 calendar, practice/SQ/race results, qualifying, sprint and standings; no free real-time promise. `/participants/:id` is reserved only, not a required implementation.

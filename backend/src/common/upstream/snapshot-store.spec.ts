@@ -72,6 +72,19 @@ describe('SnapshotStore', () => {
     ).rejects.toThrow('still down');
   });
 
+  it('serves usable data at once and refreshes in the background when asked to', async () => {
+    const { store, calls, loader, advance } = setup();
+    const swr = { ...POLICY, refreshInBackground: true };
+    await store.read('k', loader('v1'), swr);
+    advance(2_000);
+    const read = await store.read('k', loader('v2'), swr);
+    expect(read).toEqual({ value: 'v1', retrievedAt: 't0', stale: false });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(calls).toEqual(['v1', 'v2']);
+    expect((await store.read('k', loader('v3'), swr)).value).toBe('v2');
+  });
+
   it('coalesces concurrent refreshes and evicts the oldest key beyond capacity', async () => {
     const { store, calls, loader } = setup();
     const [a, b] = await Promise.all([

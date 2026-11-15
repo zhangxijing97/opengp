@@ -89,7 +89,7 @@ interface OpenF1Read {
   key: string;
 }
 
-function cooldownFor(error: Error): number {
+export function cooldownFor(error: Error): number {
   if (!isUpstreamError(error)) return F1_SNAPSHOT_POLICY.defaultCooldownMs;
   if (error.kind === 'access_restricted') {
     return F1_SNAPSHOT_POLICY.accessRestrictedCooldownMs;
@@ -101,7 +101,7 @@ function cooldownFor(error: Error): number {
   return F1_SNAPSHOT_POLICY.defaultCooldownMs;
 }
 
-function describeFailure(error: Error): string {
+export function describeFailure(error: Error): string {
   return isUpstreamError(error)
     ? `${error.provider} ${error.kind}`
     : 'unexpected error';

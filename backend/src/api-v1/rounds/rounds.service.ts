@@ -1,15 +1,24 @@
 // Series-agnostic /api/v1 calendar use cases. Validation, aggregation across
-// series, projection and HTTP error semantics live here; series-specific data
-// and identifiers live in SeriesCalendarSource implementations.
+// series, result teasers, projection and HTTP error semantics live here;
+// series-specific data and identifiers live in the series sources.
 
 import { Inject, Injectable } from '@nestjs/common';
-import type { Availability } from '../../canonical/canonical.types';
+import type {
+  Availability,
+  CanonicalRound,
+  CanonicalSession,
+} from '../../canonical/canonical.types';
 import { legacyOpenF1SessionAlias } from '../../canonical/canonical-id';
 import { sessionDayKey } from '../../canonical/interval-selection';
-import { SERIES_CALENDAR_SOURCES } from '../../canonical/series-calendar-source';
+import type { PreviewOutcome } from '../../canonical/results.types';
+import {
+  SERIES_CALENDAR_SOURCES,
+  SERIES_RESULTS_SOURCES,
+} from '../../canonical/series-calendar-source';
 import type {
   IntervalCollection,
   SeriesCalendarSource,
+  SeriesResultsSource,
 } from '../../canonical/series-calendar-source';
 import { classifySeriesId } from '../../canonical/series-capabilities';
 import { CLOCK } from '../../common/clock';
@@ -17,16 +26,14 @@ import type { Clock } from '../../common/clock';
 import { buildMeta, earliestIso } from '../../common/http/api-envelope';
 import type { ApiResponse } from '../../common/http/api-envelope';
 import {
-  OpenGpApiError,
-  fromUpstreamError,
+  asApiError,
   invalidQuery,
   notFound,
   unsupportedCapability,
 } from '../../common/http/api-errors';
 import { parseLocalDateInterval } from '../../common/time/local-date-interval';
 import type { LocalDateInterval } from '../../common/time/local-date-interval';
-import { toIsoUtc } from '../../common/time/time-zone';
-import { isUpstreamError } from '../../common/upstream/upstream-error';
+import { resolveIanaTimeZone, toIsoUtc } from '../../common/time/time-zone';
 import type {
   RoundDetailData,
   RoundSummary,
@@ -44,6 +51,7 @@ export interface RoundsQueryInput {
   to: unknown;
   tz: unknown;
   seriesId: unknown;
+  dateBasis?: unknown;
 }
 
 const MAX_ECHOED_ID_LENGTH = 80;
@@ -60,23 +68,35 @@ function combineAvailability(values: Availability[]): Availability {
   return 'partial';
 }
 
-function toApiError(error: unknown, capability: string): Error {
-  if (error instanceof OpenGpApiError) return error;
-  if (isUpstreamError(error)) return fromUpstreamError(error, capability);
-  return error instanceof Error ? error : new Error(String(error));
+/** Optional `tz` on detail endpoints; invalid values are a 400. */
+function parseDetailTimeZone(tz: unknown): string {
+  if (tz === undefined) return 'UTC';
+  const resolved =
+    typeof tz === 'string' && tz.length > 0 ? resolveIanaTimeZone(tz) : null;
+  if (!resolved) {
+    throw invalidQuery([
+      '"tz" must be a valid IANA time zone such as "Europe/London".',
+    ]);
+  }
+  return resolved;
 }
 
 @Injectable()
 export class RoundsService {
   private readonly sourcesBySeries: Map<string, SeriesCalendarSource>;
+  private readonly resultsBySeries: Map<string, SeriesResultsSource>;
 
   constructor(
     @Inject(SERIES_CALENDAR_SOURCES)
     private readonly sources: SeriesCalendarSource[],
+    @Inject(SERIES_RESULTS_SOURCES) resultsSources: SeriesResultsSource[],
     @Inject(CLOCK) private readonly clock: Clock,
   ) {
     this.sourcesBySeries = new Map(
       sources.map((source) => [source.seriesId, source]),
+    );
+    this.resultsBySeries = new Map(
+      resultsSources.map((source) => [source.seriesId, source]),
     );
   }
 
@@ -125,7 +145,7 @@ export class RoundsService {
       if (result.status === 'fulfilled') collections.push(result.value);
       else failures.push(result.reason);
     }
-    if (collections.length === 0) throw toApiError(failures[0], 'calendar');
+    if (collections.length === 0) throw asApiError(failures[0], 'calendar');
 
     const coverage = collections.map((collection) => collection.coverage);
     const warnings = collections.flatMap((collection) => collection.warnings);
@@ -138,10 +158,19 @@ export class RoundsService {
           from: interval.from,
           to: interval.to,
           tz: interval.timeZone,
+          dateBasis: interval.dateBasis,
           startsAt: interval.startsAtUtc,
           endsAt: interval.endsAtUtc,
         },
-        rounds: this.projectAndSort(collections, interval, nowMs),
+        rounds: this.projectAndSort(
+          collections,
+          interval,
+          nowMs,
+          await this.previewsFor(
+            collections.flatMap((collection) => collection.rounds),
+            nowMs,
+          ),
+        ),
       },
       meta: buildMeta({
         availability:
@@ -159,17 +188,27 @@ export class RoundsService {
     };
   }
 
-  async getRound(roundId: string): Promise<ApiResponse<RoundDetailData>> {
+  async getRound(
+    roundId: string,
+    tz?: unknown,
+  ): Promise<ApiResponse<RoundDetailData>> {
+    const timeZone = parseDetailTimeZone(tz);
+    const nowMs = this.clock();
     for (const source of this.sources) {
       const resolved = await this.call(() => source.resolveRound(roundId));
       if (!resolved) continue;
+      const { round } = resolved;
+      const previews = await this.previewsFor(
+        [{ round, sessions: round.sessions }],
+        nowMs,
+      );
       return {
         data: {
-          round: projectRound(
-            resolved.round,
-            resolved.round.sessions,
-            this.clock(),
-          ),
+          round: projectRound(round, round.sessions, nowMs, {
+            timeZone,
+            dateBasis: 'viewer',
+            previews,
+          }),
         },
         meta: buildMeta({
           availability: resolved.availability,
@@ -182,15 +221,28 @@ export class RoundsService {
     throw notFound(`Round "${displayId(roundId)}" was not found.`);
   }
 
-  async getSession(sessionId: string): Promise<ApiResponse<SessionDetailData>> {
+  async getSession(
+    sessionId: string,
+    tz?: unknown,
+  ): Promise<ApiResponse<SessionDetailData>> {
+    const timeZone = parseDetailTimeZone(tz);
+    const nowMs = this.clock();
     for (const source of this.sources) {
       const resolved = await this.call(() => source.resolveSession(sessionId));
       if (!resolved) continue;
       const { round, session } = resolved;
       const key = session.external.openf1SessionKey;
+      const previews = await this.previewsFor(
+        [{ round, sessions: [session] }],
+        nowMs,
+      );
       return {
         data: {
-          session: projectSession(session, round.season, this.clock()),
+          session: projectSession(session, round.season, nowMs, {
+            timeZone,
+            dateBasis: 'viewer',
+            previews,
+          }),
           round: {
             id: round.id,
             name: round.name,
@@ -209,19 +261,55 @@ export class RoundsService {
     throw notFound(`Session "${displayId(sessionId)}" was not found.`);
   }
 
+  /**
+   * Result teasers for the given sessions. A teaser problem never fails the
+   * calendar: affected sessions simply keep their inferred availability.
+   */
+  private async previewsFor(
+    items: Array<{ round: CanonicalRound; sessions: CanonicalSession[] }>,
+    nowMs: number,
+  ): Promise<Map<string, PreviewOutcome>> {
+    const merged = new Map<string, PreviewOutcome>();
+    const settled = await Promise.allSettled(
+      items.map(({ round, sessions }) => {
+        const source = this.resultsBySeries.get(round.seriesId);
+        return source
+          ? source.previewResults(round, sessions, nowMs)
+          : Promise.resolve(new Map<string, PreviewOutcome>());
+      }),
+    );
+    for (const result of settled) {
+      if (result.status === 'fulfilled') {
+        for (const [id, outcome] of result.value) merged.set(id, outcome);
+      }
+    }
+    return merged;
+  }
+
   private projectAndSort(
     collections: IntervalCollection[],
     interval: LocalDateInterval,
     nowMs: number,
+    previews: Map<string, PreviewOutcome>,
   ): RoundSummary[] {
-    const compare = compareSessionsInZone(interval.timeZone);
+    const compare = compareSessionsInZone(
+      interval.timeZone,
+      interval.dateBasis,
+    );
+    const context = {
+      timeZone: interval.timeZone,
+      dateBasis: interval.dateBasis,
+      previews,
+    };
     return collections
       .flatMap((collection) => collection.rounds)
       .map(({ round, sessions }) => {
         const first = [...sessions].sort(compare)[0];
         return {
-          summary: projectRound(round, sessions, nowMs, interval.timeZone),
-          sortKey: `${sessionDayKey(first, interval.timeZone)}|${first.scheduledStartAt ?? '~'}`,
+          summary: projectRound(round, sessions, nowMs, context),
+          sortKey: `${sessionDayKey(first, interval.timeZone, interval.dateBasis)}|${
+            first.scheduledStartAt ?? '~'
+          }`,
         };
       })
       .sort(
@@ -239,7 +327,7 @@ export class RoundsService {
     try {
       return await operation();
     } catch (error) {
-      throw toApiError(error, 'calendar');
+      throw asApiError(error, 'calendar');
     }
   }
 }

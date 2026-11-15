@@ -16,6 +16,12 @@ import {
   jolpicaRacePage,
 } from './fixtures/jolpica.fixtures';
 import {
+  CHINA_2025_RACE_ROWS,
+  DRIVER_STANDINGS_AFTER_R2,
+  raceTablePage,
+  standingsPage,
+} from './fixtures/jolpica-results.fixtures';
+import {
   OPENF1_2025_MEETINGS,
   OPENF1_2025_SESSIONS,
 } from './fixtures/openf1.fixtures';
@@ -49,6 +55,34 @@ interface RoundDetailData {
 interface SessionDetailData {
   session: { id: string };
   aliases: string[];
+}
+
+interface TrackWeekData {
+  interval: { dateBasis: string };
+  rounds: Array<{
+    id: string;
+    sessions: Array<{ id: string; dayOffset: number | null }>;
+  }>;
+}
+
+interface ResultsData {
+  sessionId: string;
+  resultSet: {
+    classification: Array<{
+      position: number | null;
+      classificationStatus: string;
+    }>;
+  } | null;
+}
+
+interface StandingsData {
+  standings: {
+    rows: Array<{
+      rank: number | null;
+      points: string;
+      canStillWin: boolean | null;
+    }>;
+  };
 }
 
 function bodyOf<T = unknown>(response: { body: unknown }): V1Body<T> {
@@ -85,6 +119,21 @@ function healthyUpstream(): FakeHttpTransport {
     .on(
       route('/sessions', { session_key: '9988' }),
       jsonResponse([OPENF1_2025_SESSIONS[6]]),
+    )
+    .on(
+      route('/2025/2/results.json'),
+      jsonResponse(raceTablePage('2025', '2', 'Results', CHINA_2025_RACE_ROWS)),
+    )
+    .on(
+      route('/2025/driverStandings.json'),
+      jsonResponse(
+        standingsPage(
+          '2025',
+          '2',
+          'DriverStandings',
+          DRIVER_STANDINGS_AFTER_R2,
+        ),
+      ),
     );
 }
 
@@ -188,6 +237,60 @@ describe('/api/v1 (e2e, fake upstream)', () => {
     expect(response.status).toBe(200);
     expect(body.data?.session.id).toBe('f1:2025:china:fp1');
     expect(body.data?.aliases).toEqual(['openf1-session-9988']);
+  });
+
+  it('GET /api/v1/rounds?dateBasis=track keeps the weekend together with a day offset', async () => {
+    const response = await request(app.getHttpServer()).get(
+      '/api/v1/rounds?from=2026-10-26&to=2026-11-02&tz=Asia%2FTokyo&dateBasis=track',
+    );
+    const body = bodyOf<TrackWeekData>(response);
+    expect(response.status).toBe(200);
+    expect(body.data?.interval.dateBasis).toBe('track');
+    const race = body.data?.rounds
+      .find((round) => round.id === 'f1:2026:mexico-city')
+      ?.sessions.find((session) => session.id.endsWith(':race'));
+    expect(race?.dayOffset).toBe(1);
+  });
+
+  it('GET /api/v1/sessions/:sessionId/results returns the published classification', async () => {
+    const response = await request(app.getHttpServer()).get(
+      '/api/v1/sessions/f1:2025:china:race/results',
+    );
+    const body = bodyOf<ResultsData>(response);
+    expect(response.status).toBe(200);
+    expect(body.meta.availability).toBe('available');
+    const rows = body.data?.resultSet?.classification ?? [];
+    expect(rows[0].position).toBe(1);
+    expect(
+      rows.filter((row) => row.classificationStatus === 'dsq'),
+    ).toHaveLength(2);
+  });
+
+  it('GET /api/v1/sessions/:sessionId/results is not_published for a future session', async () => {
+    const response = await request(app.getHttpServer()).get(
+      '/api/v1/sessions/f1:2026:mexico-city:race/results',
+    );
+    expect(response.status).toBe(200);
+    expect(bodyOf<ResultsData>(response).data?.resultSet).toBeNull();
+    expect(bodyOf(response).meta.availability).toBe('not_published');
+  });
+
+  it('GET /api/v1/standings returns provider standings and validates its query', async () => {
+    const server = app.getHttpServer();
+    const response = await request(server).get(
+      '/api/v1/standings?seasonId=f1:2025&subjectType=driver',
+    );
+    expect(response.status).toBe(200);
+    expect(
+      bodyOf<StandingsData>(response).data?.standings.rows[0],
+    ).toMatchObject({
+      rank: 1,
+      points: '44',
+    });
+    const missing = await request(server).get(
+      '/api/v1/standings?seasonId=f1:2025',
+    );
+    expect(missing.status).toBe(400);
   });
 
   it('answers 404 with the error envelope for unknown canonical IDs', async () => {

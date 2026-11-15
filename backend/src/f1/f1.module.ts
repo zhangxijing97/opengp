@@ -1,6 +1,6 @@
 // F1 v1 data module: typed Jolpica + OpenF1 clients, the snapshot-backed
-// calendar service and the F1 SeriesCalendarSource. Independent of the
-// legacy DataProvidersModule; legacy routing is untouched.
+// calendar, results and standings services, and the F1 series sources.
+// Independent of the legacy DataProvidersModule; legacy routing is untouched.
 
 import { Module } from '@nestjs/common';
 import { UpstreamModule } from '../common/upstream/upstream.module';
@@ -8,6 +8,8 @@ import { JolpicaClient } from '../data-providers/jolpica/jolpica.client';
 import { OpenF1ApiClient } from '../data-providers/openf1/openf1-api.client';
 import { F1CalendarService } from './f1-calendar.service';
 import { F1CalendarSource } from './f1-calendar.source';
+import { F1ResultsService } from './results/f1-results.service';
+import { F1StandingsService } from './standings/f1-standings.service';
 
 @Module({
   imports: [UpstreamModule],
@@ -16,12 +18,16 @@ import { F1CalendarSource } from './f1-calendar.source';
     OpenF1ApiClient,
     F1CalendarService,
     F1CalendarSource,
+    F1ResultsService,
+    F1StandingsService,
   ],
   exports: [
     JolpicaClient,
     OpenF1ApiClient,
     F1CalendarService,
     F1CalendarSource,
+    F1ResultsService,
+    F1StandingsService,
   ],
 })
 export class F1Module {}

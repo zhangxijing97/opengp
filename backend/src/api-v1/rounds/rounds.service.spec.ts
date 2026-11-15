@@ -4,6 +4,21 @@ import { JolpicaClient } from '../../data-providers/jolpica/jolpica.client';
 import { OpenF1ApiClient } from '../../data-providers/openf1/openf1-api.client';
 import { F1CalendarService } from '../../f1/f1-calendar.service';
 import { F1CalendarSource } from '../../f1/f1-calendar.source';
+import { F1ResultsService } from '../../f1/results/f1-results.service';
+import {
+  CHINA_2025_QUALIFYING_ROWS,
+  CHINA_2025_RACE_ROWS,
+  CHINA_2025_SPRINT_ROWS,
+  DRIVERS_2025,
+  raceTablePage,
+  seasonDriversPage,
+} from '../../../test/fixtures/jolpica-results.fixtures';
+import {
+  FP1_9988_DRIVERS,
+  FP1_9988_RESULTS,
+  SQ_9989_DRIVERS,
+  SQ_9989_RESULTS,
+} from '../../../test/fixtures/openf1-results.fixtures';
 import {
   JOLPICA_2025_AUSTRALIA,
   JOLPICA_2025_CHINA,
@@ -29,13 +44,21 @@ function setup(configure: (transport: FakeHttpTransport) => void) {
   const transport = new FakeHttpTransport();
   configure(transport);
   const runtime = instantRuntime(() => NOW);
-  const calendar = new F1CalendarService(
-    new JolpicaClient(transport, DEFAULT_UPSTREAM_CONFIG, runtime),
-    new OpenF1ApiClient(transport, DEFAULT_UPSTREAM_CONFIG, runtime),
-    () => NOW,
+  const jolpica = new JolpicaClient(
+    transport,
+    DEFAULT_UPSTREAM_CONFIG,
+    runtime,
   );
+  const openf1 = new OpenF1ApiClient(
+    transport,
+    DEFAULT_UPSTREAM_CONFIG,
+    runtime,
+  );
+  const calendar = new F1CalendarService(jolpica, openf1, () => NOW);
+  const source = new F1CalendarSource(calendar);
+  const results = new F1ResultsService(source, jolpica, openf1, () => NOW);
   return {
-    service: new RoundsService([new F1CalendarSource(calendar)], () => NOW),
+    service: new RoundsService([source], [results], () => NOW),
     transport,
   };
 }
@@ -73,6 +96,51 @@ function season2025(transport: FakeHttpTransport) {
     );
 }
 
+function china2025Results(transport: FakeHttpTransport) {
+  transport
+    .on(
+      route('/2025/2/results.json'),
+      jsonResponse(raceTablePage('2025', '2', 'Results', CHINA_2025_RACE_ROWS)),
+    )
+    .on(
+      route('/2025/2/sprint.json'),
+      jsonResponse(
+        raceTablePage('2025', '2', 'SprintResults', CHINA_2025_SPRINT_ROWS),
+      ),
+    )
+    .on(
+      route('/2025/2/qualifying.json'),
+      jsonResponse(
+        raceTablePage(
+          '2025',
+          '2',
+          'QualifyingResults',
+          CHINA_2025_QUALIFYING_ROWS,
+        ),
+      ),
+    )
+    .on(
+      route('/2025/drivers.json'),
+      jsonResponse(seasonDriversPage(Object.values(DRIVERS_2025))),
+    )
+    .on(
+      route('/session_result', { session_key: '9988' }),
+      jsonResponse(FP1_9988_RESULTS),
+    )
+    .on(
+      route('/drivers', { session_key: '9988' }),
+      jsonResponse(FP1_9988_DRIVERS),
+    )
+    .on(
+      route('/session_result', { session_key: '9989' }),
+      jsonResponse(SQ_9989_RESULTS),
+    )
+    .on(
+      route('/drivers', { session_key: '9989' }),
+      jsonResponse(SQ_9989_DRIVERS),
+    );
+}
+
 async function captureApiError(
   promise: Promise<unknown>,
 ): Promise<OpenGpApiError> {
@@ -103,6 +171,7 @@ describe('RoundsService.listRounds', () => {
       from: '2026-10-26',
       to: '2026-11-02',
       tz: 'America/Los_Angeles',
+      dateBasis: 'viewer',
       startsAt: '2026-10-26T07:00:00Z',
       endsAt: '2026-11-02T08:00:00Z',
     });
@@ -263,6 +332,132 @@ describe('RoundsService.listRounds', () => {
       ).getStatus(),
     ).toBe(422);
     expect(transport.requests).toHaveLength(0);
+  });
+});
+
+describe('RoundsService event-weekend grouping and teasers', () => {
+  it('keeps an Americas Sunday race in its weekend for an Asian viewer (dateBasis=track, +1 day)', async () => {
+    const { service } = setup(season2026);
+    const viewerWeek = await service.listRounds({
+      ...week('2026-10-26', '2026-11-02', 'Asia/Tokyo'),
+    });
+    const viewerMexico = viewerWeek.data.rounds.find(
+      (round) => round.id === 'f1:2026:mexico-city',
+    );
+    expect(
+      viewerMexico?.sessions.some((session) => session.id.endsWith(':race')),
+    ).toBe(false);
+
+    const trackWeek = await service.listRounds({
+      ...week('2026-10-26', '2026-11-02', 'Asia/Tokyo'),
+      dateBasis: 'track',
+    });
+    expect(trackWeek.data.interval.dateBasis).toBe('track');
+    const mexico = trackWeek.data.rounds.find(
+      (round) => round.id === 'f1:2026:mexico-city',
+    );
+    expect(mexico?.trackTimeZone).toBe('America/Mexico_City');
+    const race = mexico?.sessions.find((session) =>
+      session.id.endsWith(':race'),
+    );
+    expect(race).toMatchObject({
+      trackLocalDate: '2026-11-01',
+      localDate: '2026-11-02',
+      dayOffset: 1,
+    });
+    const nextTrackWeek = await service.listRounds({
+      ...week('2026-11-02', '2026-11-09', 'Asia/Tokyo'),
+      dateBasis: 'track',
+    });
+    expect(
+      nextTrackWeek.data.rounds.some(
+        (round) => round.id === 'f1:2026:mexico-city',
+      ),
+    ).toBe(false);
+  });
+
+  it('marks a session that is the previous evening for the viewer with -1 day', async () => {
+    const { service } = setup(season2025);
+    const response = await service.listRounds({
+      ...week('2025-03-10', '2025-03-17', 'America/Los_Angeles'),
+      dateBasis: 'track',
+    });
+    const race = response.data.rounds
+      .find((round) => round.id === 'f1:2025:australia')
+      ?.sessions.find((session) => session.id.endsWith(':race'));
+    expect(race).toMatchObject({
+      trackLocalDate: '2025-03-16',
+      localDate: '2025-03-15',
+      dayOffset: -1,
+    });
+  });
+
+  it('rejects an unknown dateBasis and an invalid detail tz with 400', async () => {
+    const { service } = setup(season2026);
+    expect(
+      (
+        await captureApiError(
+          service.listRounds({
+            ...week('2026-10-26', '2026-11-02'),
+            dateBasis: 'venue',
+          }),
+        )
+      ).getStatus(),
+    ).toBe(400);
+    expect(
+      (
+        await captureApiError(service.getRound('f1:2025:china', 'Mars/Base'))
+      ).getStatus(),
+    ).toBe(400);
+  });
+
+  it('adds tiered result teasers for finished sessions (L1 top three, L2 pole, L3 leader)', async () => {
+    const { service } = setup((t) => {
+      season2025(t);
+      china2025Results(t);
+    });
+    const response = await service.listRounds(
+      week('2025-03-17', '2025-03-24', 'Asia/Shanghai'),
+    );
+    const china = response.data.rounds.find(
+      (round) => round.id === 'f1:2025:china',
+    );
+    const byKind = (kind: string) =>
+      china?.sessions.find((session) => session.id.endsWith(`:${kind}`));
+    expect(byKind('fp1')?.resultAvailability).toBe('available');
+    expect(byKind('fp1')?.resultPreview).toMatchObject({
+      kind: 'practice_leader',
+      names: ['Lando Norris'],
+      metricLabel: '1:31.504',
+    });
+    expect(byKind('sprint_qualifying')?.resultPreview).toMatchObject({
+      kind: 'pole',
+      names: ['Lewis Hamilton'],
+      metricLabel: '1:30.849',
+    });
+    expect(byKind('sprint')?.resultPreview?.names).toEqual([
+      'Lewis Hamilton',
+      'Oscar Piastri',
+      'Max Verstappen',
+    ]);
+    expect(byKind('qualifying')?.resultPreview?.kind).toBe('top_three');
+    expect(
+      byKind('race')?.resultPreview?.entries.map((entry) => entry.code),
+    ).toEqual(['PIA', 'NOR', 'RUS']);
+  });
+
+  it('keeps the calendar working when results fail (teasers degrade per session)', async () => {
+    const { service } = setup(season2025);
+    const response = await service.listRounds(week('2025-03-17', '2025-03-24'));
+    const china = response.data.rounds.find(
+      (round) => round.id === 'f1:2025:china',
+    );
+    expect(china?.sessions).toHaveLength(5);
+    expect(
+      china?.sessions.every((session) => session.resultPreview === null),
+    ).toBe(true);
+    expect(china?.sessions[0].resultAvailability).toBe('upstream_error');
+    expect(response.meta.availability).toBe('available');
   });
 });
 

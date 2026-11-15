@@ -15,12 +15,13 @@ export class RoundsController {
     @Query('to') to: unknown,
     @Query('tz') tz: unknown,
     @Query('seriesId') seriesId: unknown,
+    @Query('dateBasis') dateBasis: unknown,
   ) {
-    return this.roundsService.listRounds({ from, to, tz, seriesId });
+    return this.roundsService.listRounds({ from, to, tz, seriesId, dateBasis });
   }
 
   @Get(':roundId')
-  getRound(@Param('roundId') roundId: string) {
-    return this.roundsService.getRound(roundId);
+  getRound(@Param('roundId') roundId: string, @Query('tz') tz: unknown) {
+    return this.roundsService.getRound(roundId, tz);
   }
 }

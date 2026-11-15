@@ -20,6 +20,8 @@ function session(overrides: Partial<CanonicalSession>): CanonicalSession {
     scheduledDate: null,
     schedulePrecision: 'instant',
     scheduledEndAt: null,
+    trackTimeZone: 'America/Mexico_City',
+    trackLocalDate: '2026-11-01',
     cancelled: null,
     resultCoverageFromSeason: 1950,
     external: { openf1SessionKey: null },
@@ -157,6 +159,64 @@ describe('round projection', () => {
       status: 'unknown',
       basis: 'unknown',
     });
+  });
+
+  it('adds viewer date, venue date and a signed day offset', () => {
+    const race = session({});
+    const tokyo = projectSession(race, 2026, at('2026-10-31T12:00:00Z'), {
+      timeZone: 'Asia/Tokyo',
+      dateBasis: 'track',
+    });
+    expect(tokyo).toMatchObject({
+      localDate: '2026-11-02',
+      trackLocalDate: '2026-11-01',
+      trackTimeZone: 'America/Mexico_City',
+      dayOffset: 1,
+    });
+    const la = projectSession(race, 2026, at('2026-10-31T12:00:00Z'), {
+      timeZone: 'America/Los_Angeles',
+      dateBasis: 'track',
+    });
+    expect(la.dayOffset).toBe(0);
+    const dateOnly = projectSession(
+      session({
+        scheduledStartAt: null,
+        scheduledDate: '1950-05-13',
+        schedulePrecision: 'date',
+        trackLocalDate: '1950-05-13',
+      }),
+      1950,
+      at('2026-10-31T12:00:00Z'),
+    );
+    expect(dateOnly).toMatchObject({
+      localDate: '1950-05-13',
+      dayOffset: null,
+    });
+  });
+
+  it('uses a fetched teaser and its availability when one is provided', () => {
+    const past = session({ scheduledStartAt: '2026-10-25T19:00:00Z' });
+    const previews = new Map([
+      [
+        past.id,
+        {
+          availability: 'available' as const,
+          preview: {
+            kind: 'top_three' as const,
+            names: ['A', 'B', 'C'],
+            metricLabel: null,
+            entries: [],
+          },
+        },
+      ],
+    ]);
+    const summary = projectSession(past, 2026, at('2026-10-31T12:00:00Z'), {
+      timeZone: 'UTC',
+      dateBasis: 'viewer',
+      previews,
+    });
+    expect(summary.resultAvailability).toBe('available');
+    expect(summary.resultPreview?.names).toEqual(['A', 'B', 'C']);
   });
 
   it('sorts timed sessions first within a local day, date-only after, unknown last', () => {

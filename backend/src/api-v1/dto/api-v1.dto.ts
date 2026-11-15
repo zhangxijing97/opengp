@@ -9,6 +9,20 @@ import type {
   SchedulePrecision,
   SessionType,
 } from '../../canonical/canonical.types';
+import type {
+  ResultPreview,
+  ResultSet,
+  StandingsData,
+} from '../../canonical/results.types';
+import type { DateBasis } from '../../common/time/local-date-interval';
+
+export type {
+  ClassificationRow,
+  ResultPreview,
+  ResultSet,
+  StandingRow,
+  StandingsData,
+} from '../../canonical/results.types';
 
 export interface SeriesDto {
   id: string;
@@ -37,12 +51,6 @@ export interface SessionLifecycleDto {
   basis: LifecycleBasis;
 }
 
-export interface ResultPreviewDto {
-  kind: 'practice_leader' | 'pole' | 'winner' | 'top_three';
-  names: string[];
-  metricLabel: string | null;
-}
-
 export interface SessionSummary {
   id: string;
   roundId: string;
@@ -53,9 +61,17 @@ export interface SessionSummary {
   scheduledDate: string | null;
   schedulePrecision: SchedulePrecision;
   scheduledEndAt: string | null;
+  /** Additive: start date in the requested `tz` (viewer). */
+  localDate: string | null;
+  /** Additive: start date at the venue; groups the event weekend. */
+  trackLocalDate: string | null;
+  /** Additive: IANA zone of the venue, null if not reviewed. */
+  trackTimeZone: string | null;
+  /** Additive: localDate - trackLocalDate in days (e.g. +1 = next day for the viewer). */
+  dayOffset: number | null;
   lifecycle: SessionLifecycleDto;
   resultAvailability: Availability;
-  resultPreview: ResultPreviewDto | null;
+  resultPreview: ResultPreview | null;
 }
 
 export interface RoundSummary {
@@ -66,6 +82,8 @@ export interface RoundSummary {
   roundNumber: number | null;
   circuit: { id: string; name: string } | null;
   locationLabel: string | null;
+  /** Additive: IANA zone of the venue, null if not reviewed. */
+  trackTimeZone: string | null;
   startsAt: string | null;
   /** Latest planned session end (not an actual finish time). */
   endsAt: string | null;
@@ -78,6 +96,7 @@ export interface IntervalDto {
   from: string;
   to: string;
   tz: string;
+  dateBasis: DateBasis;
   startsAt: string;
   endsAt: string;
 }
@@ -97,6 +116,15 @@ export interface RoundsListData {
 
 export interface RoundDetailData {
   round: RoundSummary;
+}
+
+export interface SessionResultsData {
+  sessionId: string;
+  resultSet: ResultSet | null;
+}
+
+export interface StandingsResponseData {
+  standings: StandingsData;
 }
 
 export interface SessionDetailData {

@@ -34,3 +34,29 @@ export interface OpenF1FetchResult<T> {
   items: T[];
   retrievedAt: string;
 }
+
+/** Published post-session classification row (/session_result). */
+export interface OpenF1ApiSessionResult {
+  session_key: number;
+  driver_number: number;
+  position: number | null;
+  number_of_laps: number | null;
+  dnf: boolean | null;
+  dns: boolean | null;
+  dsq: boolean | null;
+  /** Practice: best lap seconds; qualifying-type: [Q1, Q2, Q3] seconds. */
+  duration: number | Array<number | null> | null;
+  /** Number, text such as "+1 LAP", a per-phase array, or null. */
+  gap_to_leader: number | string | Array<number | string | null> | null;
+  points: number | null;
+}
+
+/** Driver entered in one session (/drivers). */
+export interface OpenF1ApiDriver {
+  session_key: number;
+  driver_number: number;
+  full_name: string | null;
+  name_acronym: string | null;
+  last_name: string | null;
+  team_name: string | null;
+}

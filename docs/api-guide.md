@@ -2,7 +2,7 @@
 
 A short, practical guide to the backend API. Full field definitions: [`api-contract.md`](./api-contract.md).
 
-> **Status (2026-10-31):** `/api/v1` covers **Formula 1 schedules and sessions**. Results and standings are not available yet.
+> **Status (2026-11-15):** `/api/v1` covers **Formula 1 schedules, session results and championship standings**.
 
 ## 1. What it does
 
@@ -34,6 +34,8 @@ All new routes start with `/api/v1`. The older `/events/*` routes still work unc
 | `GET /api/v1/rounds?from=&to=&tz=` | Rounds and sessions in a date range | [this week](http://localhost:3001/api/v1/rounds?from=2026-10-26&to=2026-11-02&tz=America%2FLos_Angeles) |
 | `GET /api/v1/rounds/:roundId` | One Grand Prix with all sessions | [2025 China](http://localhost:3001/api/v1/rounds/f1:2025:china) |
 | `GET /api/v1/sessions/:sessionId` | One session | [2025 China FP1](http://localhost:3001/api/v1/sessions/f1:2025:china:fp1) |
+| `GET /api/v1/sessions/:sessionId/results` | Published classification of a session | [2025 China race](http://localhost:3001/api/v1/sessions/f1:2025:china:race/results) |
+| `GET /api/v1/standings?seasonId=&subjectType=` | Driver or team standings | [2025 drivers](http://localhost:3001/api/v1/standings?seasonId=f1:2025&subjectType=driver) |
 
 ## 4. Querying a week
 
@@ -43,6 +45,7 @@ All new routes start with `/api/v1`. The older `/events/*` routes still work unc
 | `to` | Day after the last day, **excluded**. A week is Monday → next Monday |
 | `tz` | Your IANA time zone, e.g. `America/Los_Angeles`. Default `UTC` |
 | `seriesId` | Optional, e.g. `f1` |
+| `dateBasis` | `viewer` (default): group by the session's start date in `tz`. `track`: group by the date at the venue, so a race weekend stays together |
 
 - A session belongs to the day it **starts in your time zone**; daylight-saving changes are handled.
 - A Round lists only the sessions inside the range. Open the Round for the full weekend.
@@ -51,6 +54,16 @@ All new routes start with `/api/v1`. The older `/events/*` routes still work unc
 Home-page tabs (Los Angeles time): [Last week](http://localhost:3001/api/v1/rounds?from=2026-10-19&to=2026-10-26&tz=America%2FLos_Angeles) · [This week](http://localhost:3001/api/v1/rounds?from=2026-10-26&to=2026-11-02&tz=America%2FLos_Angeles) · [Next week](http://localhost:3001/api/v1/rounds?from=2026-11-02&to=2026-11-09&tz=America%2FLos_Angeles)
 
 In the browser, `Intl.DateTimeFormat().resolvedOptions().timeZone` gives the user's `tz`.
+
+**For the Home week view use `dateBasis=track`.** Example: the Mexico City race (Sunday 1 Nov, 14:00 local) is Monday morning in Tokyo, yet it stays in that weekend: [try it](http://localhost:3001/api/v1/rounds?from=2026-10-26&to=2026-11-02&tz=Asia%2FTokyo&dateBasis=track). Each session then carries:
+
+| Field | Meaning |
+| --- | --- |
+| `trackLocalDate` | Date at the venue; group day cards by this |
+| `localDate` | Date in the viewer's `tz` |
+| `dayOffset` | `localDate - trackLocalDate`: `+1` shows "+1 day", `-1` shows "−1 day", `0` shows nothing |
+
+On a Monday, show the previous week while any of its sessions is not yet `completed`.
 
 ## 5. Reading a response
 
@@ -87,6 +100,7 @@ Fields that are easy to misread:
 | `schedulePrecision: "date"` | Only the date is known; show no time |
 | `resultAvailability: "unknown"` | Results were not checked by this endpoint. It does **not** mean there are no results |
 | `endsAt` / `scheduledEndAt` | Planned end, not the actual finish |
+| `resultPreview` | Teaser for finished sessions: `top_three` (Race, Sprint, Qualifying), `pole` (Sprint Qualifying) or `practice_leader` (Practice, with `metricLabel` best lap). `null` when not available |
 
 ## 6. IDs
 
@@ -106,13 +120,18 @@ Errors are `{ "error": { "code", "message" }, "meta": { … } }`.
 | 422 | `UNSUPPORTED_CAPABILITY` | Series only available on the old routes | [try it](http://localhost:3001/api/v1/rounds?from=2026-10-26&to=2026-11-02&seriesId=motogp) |
 | 502 / 503 | `UPSTREAM_UNAVAILABLE` / `SERVICE_UNAVAILABLE` | A data provider failed or limited access | — |
 
-## 8. Data sources
+## 8. Results and standings
+
+`/sessions/:id/results` returns `resultSet: null` with an `availability` when there is nothing to show: `not_published` (not finished or not out yet), `unsupported` (Practice before 2023), `not_applicable` (cancelled), `access_restricted` (OpenF1 during live sessions). Rows keep the provider's rank: a disqualified driver has `position: null` and `classificationStatus: "dsq"`. Points are exact strings (`"12.5"`).
+
+`/standings` returns the provider's published table (`asOfRoundId` for an earlier round). `canStillWin` is **calculated** (points + points still available ≥ leader's points; ties count as possible) and is `null` for seasons without a reviewed points table. `progress` gives rounds counted vs rounds in the calendar.
+
+## 9. Data sources
 
 Schedules come from [Jolpica-F1](https://github.com/jolpica/jolpica-f1) (1950 → now). [OpenF1](https://openf1.org) adds planned end times and cancellations (2023 → now). OpenF1 may block free access during live sessions; you then get `partial`, and schedules still work. Both publish data under CC BY-NC-SA 4.0; credit them in the UI.
 
-## 9. Not yet available
+## 10. Old routes
 
-- `/api/v1/sessions/:id/results` and `/api/v1/standings` (next phase).
-- The old `/sessions/:id/detail` ranks drivers by fastest lap, which is **not** an official result.
+The old `/sessions/:id/detail` ranks drivers by fastest lap, which is **not** an official result. Use `/api/v1/sessions/:id/results` instead.
 
 To check a running backend in one command: `cd backend && node scripts/smoke-v1.mjs`.

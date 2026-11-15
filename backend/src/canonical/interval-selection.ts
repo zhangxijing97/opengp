@@ -2,23 +2,38 @@
 // Shared by every SeriesCalendarSource and by the v1 projection.
 
 import { localDateOf } from '../common/time/time-zone';
-import {
-  intervalContainsDate,
-  intervalContainsInstant,
+import { intervalContainsDate } from '../common/time/local-date-interval';
+import type {
+  DateBasis,
+  LocalDateInterval,
 } from '../common/time/local-date-interval';
-import type { LocalDateInterval } from '../common/time/local-date-interval';
 import type { CanonicalRound, CanonicalSession } from './canonical.types';
 
-/** Calendar day used for grouping: local date for instants, source date otherwise. */
-export function sessionDayKey(
+/** Start date in the viewer's zone for instants; source date otherwise. */
+export function viewerLocalDate(
   session: CanonicalSession,
   timeZone: string,
-): string {
+): string | null {
   if (session.schedulePrecision === 'instant' && session.scheduledStartAt) {
     return localDateOf(Date.parse(session.scheduledStartAt), timeZone);
   }
-  if (session.scheduledDate) return session.scheduledDate;
-  return '9999-12-31';
+  return session.scheduledDate;
+}
+
+/**
+ * Calendar day used for grouping. `track` uses the venue date (event-weekend
+ * grouping) and falls back to the viewer date when the venue zone is unknown.
+ */
+export function sessionDayKey(
+  session: CanonicalSession,
+  timeZone: string,
+  basis: DateBasis = 'viewer',
+): string {
+  const day =
+    basis === 'track'
+      ? (session.trackLocalDate ?? viewerLocalDate(session, timeZone))
+      : viewerLocalDate(session, timeZone);
+  return day ?? '9999-12-31';
 }
 
 export function hasKnownDate(session: CanonicalSession): boolean {
@@ -33,20 +48,16 @@ export function sessionInInterval(
   session: CanonicalSession,
   interval: LocalDateInterval,
 ): boolean {
-  if (session.schedulePrecision === 'instant' && session.scheduledStartAt) {
-    return intervalContainsInstant(
-      interval,
-      Date.parse(session.scheduledStartAt),
-    );
-  }
-  if (session.scheduledDate)
-    return intervalContainsDate(interval, session.scheduledDate);
-  return false;
+  if (!hasKnownDate(session)) return false;
+  return intervalContainsDate(
+    interval,
+    sessionDayKey(session, interval.timeZone, interval.dateBasis),
+  );
 }
 
 /**
  * Sessions of `round` to show for the interval ([] = Round not included).
- * Known starts must fall inside the interval; sessions without any date are
+ * Known dates must fall inside the interval; sessions without any date are
  * added only when the Round's known dates overlap the interval.
  */
 export function selectSessionsForInterval(
@@ -61,7 +72,9 @@ export function selectSessionsForInterval(
 
   const days = round.sessions
     .filter(hasKnownDate)
-    .map((session) => sessionDayKey(session, interval.timeZone))
+    .map((session) =>
+      sessionDayKey(session, interval.timeZone, interval.dateBasis),
+    )
     .sort();
   const overlaps =
     days.length > 0 &&

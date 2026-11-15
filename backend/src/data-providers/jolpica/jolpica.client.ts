@@ -15,15 +15,23 @@ import { UpstreamError } from '../../common/upstream/upstream-error';
 import { UPSTREAM_CONFIG } from '../../common/upstream/upstream.config';
 import type { UpstreamConfig } from '../../common/upstream/upstream.config';
 import {
+  parseJolpicaDriverItem,
   parseJolpicaPage,
   parseJolpicaRace,
   parseJolpicaSeason,
+  qualifyingRowsOfRace,
+  resultRowsOfRace,
+  standingRowsOfList,
 } from './jolpica.parsers';
 import type {
+  JolpicaDriver,
   JolpicaFetchResult,
   JolpicaPage,
+  JolpicaQualifyingRow,
   JolpicaRace,
+  JolpicaResultRow,
   JolpicaSeason,
+  JolpicaStandingsResult,
 } from './jolpica.types';
 
 export const JOLPICA_PAGE_LIMIT = 100;
@@ -33,7 +41,14 @@ interface PagedRequest<T> {
   path: string;
   tableKey: string;
   listKey: string;
-  parseItem: (value: unknown, path: string) => T;
+  /** Turns one list item (e.g. a Race) into zero or more rows. */
+  parseItem: (value: unknown, path: string) => T[];
+  /**
+   * `exact`: MRData.total counts list items (calendar, seasons).
+   * `atLeast`: total counts nested rows (results, standings); a page may
+   * repeat its parent item, so only a shortfall is treated as incomplete.
+   */
+  completeness: 'exact' | 'atLeast';
 }
 
 @Injectable()
@@ -76,7 +91,8 @@ export class JolpicaClient {
       path: `/${season}.json`,
       tableKey: 'RaceTable',
       listKey: 'Races',
-      parseItem: parseJolpicaRace,
+      parseItem: (value, path) => [parseJolpicaRace(value, path)],
+      completeness: 'exact',
     });
   }
 
@@ -86,8 +102,97 @@ export class JolpicaClient {
       path: '/seasons.json',
       tableKey: 'SeasonTable',
       listKey: 'Seasons',
-      parseItem: parseJolpicaSeason,
+      parseItem: (value, path) => [parseJolpicaSeason(value, path)],
+      completeness: 'exact',
     });
+  }
+
+  /** Grand Prix classification: GET /{season}/{round}/results.json */
+  fetchRaceResults(
+    season: number,
+    round: number,
+  ): Promise<JolpicaFetchResult<JolpicaResultRow>> {
+    return this.fetchAllPages({
+      path: `/${season}/${round}/results.json`,
+      tableKey: 'RaceTable',
+      listKey: 'Races',
+      parseItem: resultRowsOfRace('Results'),
+      completeness: 'atLeast',
+    });
+  }
+
+  /** Sprint classification: GET /{season}/{round}/sprint.json */
+  fetchSprintResults(
+    season: number,
+    round: number,
+  ): Promise<JolpicaFetchResult<JolpicaResultRow>> {
+    return this.fetchAllPages({
+      path: `/${season}/${round}/sprint.json`,
+      tableKey: 'RaceTable',
+      listKey: 'Races',
+      parseItem: resultRowsOfRace('SprintResults'),
+      completeness: 'atLeast',
+    });
+  }
+
+  /** Qualifying classification: GET /{season}/{round}/qualifying.json */
+  fetchQualifyingResults(
+    season: number,
+    round: number,
+  ): Promise<JolpicaFetchResult<JolpicaQualifyingRow>> {
+    return this.fetchAllPages({
+      path: `/${season}/${round}/qualifying.json`,
+      tableKey: 'RaceTable',
+      listKey: 'Races',
+      parseItem: qualifyingRowsOfRace,
+      completeness: 'atLeast',
+    });
+  }
+
+  /** Drivers entered in a season: GET /{season}/drivers.json */
+  fetchSeasonDrivers(
+    season: number,
+  ): Promise<JolpicaFetchResult<JolpicaDriver>> {
+    return this.fetchAllPages({
+      path: `/${season}/drivers.json`,
+      tableKey: 'DriverTable',
+      listKey: 'Drivers',
+      parseItem: parseJolpicaDriverItem,
+      completeness: 'exact',
+    });
+  }
+
+  /**
+   * Published standings snapshot: GET /{season}[/{round}]/driverStandings.json
+   * or constructorStandings.json. `round` null = latest.
+   */
+  async fetchStandings(
+    season: number,
+    round: number | null,
+    subjectType: 'driver' | 'team',
+  ): Promise<JolpicaStandingsResult> {
+    const resource =
+      subjectType === 'driver' ? 'driverStandings' : 'constructorStandings';
+    const listKey =
+      subjectType === 'driver' ? 'DriverStandings' : 'ConstructorStandings';
+    let asOfRound: number | null = null;
+    const result = await this.fetchAllPages({
+      path:
+        round === null
+          ? `/${season}/${resource}.json`
+          : `/${season}/${round}/${resource}.json`,
+      tableKey: 'StandingsTable',
+      listKey: 'StandingsLists',
+      parseItem: standingRowsOfList(listKey, (value) => {
+        asOfRound = value;
+      }),
+      completeness: 'atLeast',
+    });
+    return {
+      round: asOfRound,
+      rows: result.items,
+      retrievedAt: result.retrievedAt,
+    };
   }
 
   private async fetchAllPages<T>(
@@ -113,7 +218,7 @@ export class JolpicaClient {
         );
         parsed.items.forEach((item, index) => {
           items.push(
-            request.parseItem(
+            ...request.parseItem(
               item,
               `$.MRData.${request.tableKey}.${request.listKey}[${offset + index}]`,
             ),
@@ -126,7 +231,11 @@ export class JolpicaClient {
       const pageSize = parsed.limit > 0 ? parsed.limit : JOLPICA_PAGE_LIMIT;
       const nextOffset = parsed.offset + pageSize;
       if (nextOffset >= parsed.total || parsed.items.length === 0) {
-        if (items.length !== parsed.total) {
+        const complete =
+          request.completeness === 'exact'
+            ? items.length === parsed.total
+            : items.length >= parsed.total;
+        if (!complete) {
           throw new UpstreamError(
             'jolpica',
             'bad_response',

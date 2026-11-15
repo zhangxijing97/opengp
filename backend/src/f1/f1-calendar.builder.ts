@@ -23,7 +23,11 @@ import {
   F1_CAPABILITY_ROUTES,
   F1_SERIES,
 } from '../canonical/series-capabilities';
-import { parseIsoInstant, toIsoUtc } from '../common/time/time-zone';
+import {
+  localDateOf,
+  parseIsoInstant,
+  toIsoUtc,
+} from '../common/time/time-zone';
 import type { JolpicaRace } from '../data-providers/jolpica/jolpica.types';
 import type {
   OpenF1ApiMeeting,
@@ -38,6 +42,7 @@ import {
   INCLUDE_OPENF1_ONLY_CANCELLED_ROUNDS,
   SESSION_START_MATCH_TOLERANCE_MS,
 } from './f1-identity.manifest';
+import { f1CircuitTimeZone } from './f1-circuit-timezones';
 import { assignF1RoundSlugs, baseRoundSlug } from './f1-round-identity';
 import {
   F1_SESSION_KIND_INFO,
@@ -555,8 +560,27 @@ function sortKeyMs(session: DraftSession): number {
   return Number.MAX_SAFE_INTEGER;
 }
 
+function trackLocalDateOf(
+  session: DraftSession,
+  trackTimeZone: string | null,
+): string | null {
+  if (session.startMs !== null) {
+    return trackTimeZone ? localDateOf(session.startMs, trackTimeZone) : null;
+  }
+  // Date-only (historical) schedules already carry the event's local date.
+  return session.date;
+}
+
 function finalizeRound(season: number, draft: DraftRound): CanonicalRound {
   const seasonKey = String(season);
+  const trackTimeZone = draft.jolpicaCircuitId
+    ? f1CircuitTimeZone(draft.jolpicaCircuitId)
+    : null;
+  if (!trackTimeZone && draft.sessions.some((item) => item.startMs !== null)) {
+    draft.warnings.push(
+      `track_timezone_unknown: no reviewed time zone for circuit "${draft.jolpicaCircuitId ?? 'unknown'}"; track-local dates fall back to the viewer's date`,
+    );
+  }
   const roundId = buildRoundId(F1_SERIES.id, seasonKey, draft.slug);
   const ordered = [...draft.sessions].sort(
     (a, b) =>
@@ -582,6 +606,8 @@ function finalizeRound(season: number, draft: DraftRound): CanonicalRound {
       schedulePrecision: draftSession.precision,
       scheduledEndAt:
         draftSession.endMs !== null ? toIsoUtc(draftSession.endMs) : null,
+      trackTimeZone,
+      trackLocalDate: trackLocalDateOf(draftSession, trackTimeZone),
       cancelled: draftSession.cancelled,
       resultCoverageFromSeason:
         F1_CAPABILITY_ROUTES[info.resultCapability].coverageFromSeason,
@@ -608,6 +634,7 @@ function finalizeRound(season: number, draft: DraftRound): CanonicalRound {
     roundNumber: draft.roundNumber,
     circuit: draft.circuit,
     locationLabel: draft.locationLabel,
+    trackTimeZone,
     startsAt: starts.length > 0 ? toIsoUtc(Math.min(...starts)) : null,
     endsAt: ends.length > 0 ? toIsoUtc(Math.max(...ends)) : null,
     sessions,

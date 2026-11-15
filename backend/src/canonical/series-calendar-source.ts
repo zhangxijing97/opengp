@@ -11,8 +11,18 @@ import type {
   SeasonCalendar,
   SourceRef,
 } from './canonical.types';
+import type {
+  PreviewOutcome,
+  SessionResultsOutcome,
+  StandingsOutcome,
+  StandingsSubjectType,
+} from './results.types';
 
 export const SERIES_CALENDAR_SOURCES = Symbol('OPENGP_SERIES_CALENDAR_SOURCES');
+export const SERIES_RESULTS_SOURCES = Symbol('OPENGP_SERIES_RESULTS_SOURCES');
+export const SERIES_STANDINGS_SOURCES = Symbol(
+  'OPENGP_SERIES_STANDINGS_SOURCES',
+);
 
 export interface IntervalCollection {
   rounds: Array<{ round: CanonicalRound; sessions: CanonicalSession[] }>;
@@ -41,6 +51,39 @@ export interface SeriesCalendarSource {
   /** null when the ID does not belong to this series or does not exist. */
   resolveRound(id: string): Promise<ResolvedRound | null>;
   resolveSession(id: string): Promise<ResolvedSession | null>;
+}
+
+export interface SeriesResultsSource {
+  readonly seriesId: string;
+  /** null when the ID does not belong to this series or does not exist. */
+  getSessionResults(
+    sessionId: string,
+    nowMs: number,
+  ): Promise<SessionResultsOutcome | null>;
+  /**
+   * Result teasers for list views. Never throws for provider failures: each
+   * session gets an availability instead (keyed by session ID).
+   */
+  previewResults(
+    round: CanonicalRound,
+    sessions: CanonicalSession[],
+    nowMs: number,
+  ): Promise<Map<string, PreviewOutcome>>;
+}
+
+export interface StandingsQuery {
+  seasonId: string;
+  subjectType: StandingsSubjectType;
+  asOfRoundId: string | null;
+}
+
+export interface SeriesStandingsSource {
+  readonly seriesId: string;
+  /** null when the season does not belong to this series or does not exist. */
+  getStandings(
+    query: StandingsQuery,
+    nowMs: number,
+  ): Promise<StandingsOutcome | null>;
 }
 
 /** 'available' only when enrichment and every input are fresh; else 'partial'. */

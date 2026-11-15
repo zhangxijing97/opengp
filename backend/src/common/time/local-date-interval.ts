@@ -20,10 +20,20 @@ export const MIN_INTERVAL_DAYS = 1;
 export const MAX_INTERVAL_DAYS = 31;
 export const DEFAULT_TIME_ZONE = 'UTC';
 
+/**
+ * How a session is assigned to a day:
+ * - viewer: by its start date in the viewer's time zone (`tz`).
+ * - track:  by its start date at the venue (event-weekend grouping). `tz` is
+ *           then used only for display fields such as `localDate`/`dayOffset`.
+ */
+export type DateBasis = 'viewer' | 'track';
+export const DATE_BASES: readonly DateBasis[] = ['viewer', 'track'];
+
 export interface LocalDateInterval {
   from: string;
   to: string;
   timeZone: string;
+  dateBasis: DateBasis;
   days: number;
   /** UTC instant of local midnight at `from` (informational). */
   startsAtUtc: string;
@@ -39,6 +49,7 @@ export interface LocalDateIntervalInput {
   from: unknown;
   to: unknown;
   tz: unknown;
+  dateBasis?: unknown;
 }
 
 function readSingleString(
@@ -62,6 +73,7 @@ export function parseLocalDateInterval(
   const from = readSingleString('from', input.from, errors);
   const to = readSingleString('to', input.to, errors);
   const tzRaw = readSingleString('tz', input.tz, errors);
+  const basisRaw = readSingleString('dateBasis', input.dateBasis, errors);
 
   if (input.from === undefined) {
     errors.push('"from" is required (YYYY-MM-DD, inclusive local date).');
@@ -87,6 +99,15 @@ export function parseLocalDateInterval(
     }
   }
 
+  let dateBasis: DateBasis = 'viewer';
+  if (basisRaw !== undefined) {
+    if ((DATE_BASES as readonly string[]).includes(basisRaw)) {
+      dateBasis = basisRaw as DateBasis;
+    } else {
+      errors.push('"dateBasis" must be "viewer" or "track".');
+    }
+  }
+
   if (errors.length > 0 || from === undefined || to === undefined) {
     return { ok: false, errors };
   }
@@ -105,6 +126,7 @@ export function parseLocalDateInterval(
       from,
       to,
       timeZone,
+      dateBasis,
       days,
       startsAtUtc: toIsoUtc(startOfLocalDayUtcMs(from, timeZone)),
       endsAtUtc: toIsoUtc(startOfLocalDayUtcMs(to, timeZone)),

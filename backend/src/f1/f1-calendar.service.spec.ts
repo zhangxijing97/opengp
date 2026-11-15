@@ -19,6 +19,7 @@ import {
 } from '../../test/support/fake-http-transport';
 import { F1_SNAPSHOT_POLICY, F1CalendarService } from './f1-calendar.service';
 import { F1CalendarSource } from './f1-calendar.source';
+import { F1ResultsService } from './results/f1-results.service';
 
 const T0 = Date.parse('2026-10-31T12:00:00Z');
 
@@ -31,7 +32,14 @@ function setup(transport: FakeHttpTransport) {
     new OpenF1ApiClient(transport, DEFAULT_UPSTREAM_CONFIG, runtime),
     clock,
   );
-  const rounds = new RoundsService([new F1CalendarSource(service)], clock);
+  const source = new F1CalendarSource(service);
+  const results = new F1ResultsService(
+    source,
+    new JolpicaClient(transport, DEFAULT_UPSTREAM_CONFIG, runtime),
+    new OpenF1ApiClient(transport, DEFAULT_UPSTREAM_CONFIG, runtime),
+    clock,
+  );
+  const rounds = new RoundsService([source], [results], clock);
   return { service, rounds, advance: (ms: number) => (now += ms) };
 }
 

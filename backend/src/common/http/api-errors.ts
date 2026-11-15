@@ -123,6 +123,13 @@ function codeForStatus(status: number): ApiErrorCode {
   return 'INTERNAL_ERROR';
 }
 
+/** Maps upstream failures to API errors; other errors pass through. */
+export function asApiError(error: unknown, capability: string): Error {
+  if (error instanceof OpenGpApiError) return error;
+  if (isUpstreamError(error)) return fromUpstreamError(error, capability);
+  return error instanceof Error ? error : new Error(String(error));
+}
+
 export function toOpenGpApiError(exception: unknown): OpenGpApiError {
   if (exception instanceof OpenGpApiError) return exception;
   if (isUpstreamError(exception))

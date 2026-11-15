@@ -17,12 +17,16 @@ import { UPSTREAM_CONFIG } from '../../common/upstream/upstream.config';
 import type { UpstreamConfig } from '../../common/upstream/upstream.config';
 import {
   parseOpenF1Array,
+  parseOpenF1Driver,
   parseOpenF1Meeting,
   parseOpenF1Session,
+  parseOpenF1SessionResult,
 } from './openf1-api.parsers';
 import type {
+  OpenF1ApiDriver,
   OpenF1ApiMeeting,
   OpenF1ApiSession,
+  OpenF1ApiSessionResult,
   OpenF1FetchResult,
 } from './openf1-api.types';
 
@@ -90,6 +94,28 @@ export class OpenF1ApiClient {
       parseOpenF1Meeting,
     );
     return result.items.find((item) => item.meeting_key === meetingKey) ?? null;
+  }
+
+  /** Published classification of one session: GET /session_result?session_key= */
+  fetchSessionResults(
+    sessionKey: number,
+  ): Promise<OpenF1FetchResult<OpenF1ApiSessionResult>> {
+    return this.fetchList(
+      '/session_result',
+      { session_key: sessionKey },
+      parseOpenF1SessionResult,
+    );
+  }
+
+  /** Drivers entered in one session (stand-ins differ per session). */
+  fetchSessionDrivers(
+    sessionKey: number,
+  ): Promise<OpenF1FetchResult<OpenF1ApiDriver>> {
+    return this.fetchList(
+      '/drivers',
+      { session_key: sessionKey },
+      parseOpenF1Driver,
+    );
   }
 
   private async fetchList<T>(
