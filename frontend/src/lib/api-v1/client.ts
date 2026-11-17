@@ -17,7 +17,7 @@ export type ApiResult<T> =
   | { ok: false; error: ApiFailure };
 
 export interface ApiFailure {
-  /** Backend error code, or NETWORK / INVALID_RESPONSE when the backend did not answer properly. */
+  /** Backend error code, or NETWORK / TIMEOUT / INVALID_RESPONSE when the backend did not answer properly. */
   code: string;
   message: string;
   /** HTTP status, or null when there was no response. */
@@ -32,11 +32,39 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
-export async function apiGet<T>(path: string): Promise<ApiResult<T>> {
+export interface ApiRequestOptions {
+  /** Give up after this many milliseconds and answer with the error code TIMEOUT. No limit when not set. */
+  timeoutMs?: number;
+}
+
+function timeoutFailure(timeoutMs: number): ApiResult<never> {
+  return {
+    ok: false,
+    error: {
+      code: 'TIMEOUT',
+      message: `The server did not answer within ${Math.round(timeoutMs / 1000)} seconds.`,
+      status: null,
+    },
+  };
+}
+
+export async function apiGet<T>(path: string, options: ApiRequestOptions = {}): Promise<ApiResult<T>> {
+  const { timeoutMs } = options;
+  const controller = new AbortController();
+  const timer = timeoutMs ? setTimeout(() => controller.abort(), timeoutMs) : null;
+  try {
+    return await readEnvelope<T>(path, controller.signal, timeoutMs ?? 0);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+async function readEnvelope<T>(path: string, signal: AbortSignal, timeoutMs: number): Promise<ApiResult<T>> {
   let response: Response;
   try {
-    response = await fetch(`${apiBaseUrl()}${path}`, { cache: 'no-store' });
+    response = await fetch(`${apiBaseUrl()}${path}`, { cache: 'no-store', signal });
   } catch (error) {
+    if (signal.aborted) return timeoutFailure(timeoutMs);
     return {
       ok: false,
       error: {
@@ -51,6 +79,8 @@ export async function apiGet<T>(path: string): Promise<ApiResult<T>> {
   try {
     body = await response.json();
   } catch {
+    // The limit covers reading the body too.
+    if (signal.aborted) return timeoutFailure(timeoutMs);
     return {
       ok: false,
       error: {
@@ -98,11 +128,11 @@ export interface RoundsQuery {
   dateBasis?: DateBasis;
 }
 
-export function getRounds(query: RoundsQuery): Promise<ApiResult<RoundsListData>> {
+export function getRounds(query: RoundsQuery, options?: ApiRequestOptions): Promise<ApiResult<RoundsListData>> {
   const params = new URLSearchParams({ from: query.from, to: query.to, tz: query.tz });
   if (query.seriesId) params.set('seriesId', query.seriesId);
   if (query.dateBasis) params.set('dateBasis', query.dateBasis);
-  return apiGet<RoundsListData>(`/api/v1/rounds?${params.toString()}`);
+  return apiGet<RoundsListData>(`/api/v1/rounds?${params.toString()}`, options);
 }
 
 export function getRound(roundId: string): Promise<ApiResult<RoundDetailData>> {
@@ -123,7 +153,10 @@ export interface StandingsQuery {
   subjectType: StandingsSubjectType;
 }
 
-export function getStandings(query: StandingsQuery): Promise<ApiResult<StandingsResponseData>> {
+export function getStandings(
+  query: StandingsQuery,
+  options?: ApiRequestOptions,
+): Promise<ApiResult<StandingsResponseData>> {
   const params = new URLSearchParams({ seasonId: query.seasonId, subjectType: query.subjectType });
-  return apiGet<StandingsResponseData>(`/api/v1/standings?${params.toString()}`);
+  return apiGet<StandingsResponseData>(`/api/v1/standings?${params.toString()}`, options);
 }

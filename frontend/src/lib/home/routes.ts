@@ -9,6 +9,7 @@ export const routes = {
   home: BASE_PATH || '/',
   search: `${BASE_PATH}/search`,
   searchIndex: `${BASE_PATH}/search-index`,
+  homeStandings: `${BASE_PATH}/home-standings`,
   settings: `${BASE_PATH}/settings`,
   signIn: `${BASE_PATH}/sign-in`,
   allSeries: `${BASE_PATH}/series`,

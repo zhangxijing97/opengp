@@ -31,8 +31,10 @@ export function buildWeekStrip(args: {
   /** WEEK_CELL_ID or a day key. */
   selected: string;
   counts: Readonly<Record<string, DayCounts>>;
+  /** The schedule could not be loaded: the counts are not known, so no cell says "0" or "6 sessions". */
+  unavailable?: boolean;
 }): WeekCellVM[] {
-  const { weekStart, todayKey, selected, counts } = args;
+  const { weekStart, todayKey, selected, counts, unavailable = false } = args;
   const dayKeys = Array.from({ length: 7 }, (_, index) => addDays(weekStart, index));
   const weekTotal = dayKeys.reduce((sum, key) => sum + (counts[key]?.total ?? 0), 0);
 
@@ -41,8 +43,8 @@ export function buildWeekStrip(args: {
       id: WEEK_CELL_ID,
       kind: 'week',
       label: 'WEEK',
-      number: String(weekTotal),
-      status: { text: weekTotal === 1 ? 'session' : 'sessions', dot: false },
+      number: unavailable ? '–' : String(weekTotal),
+      status: unavailable ? null : { text: weekTotal === 1 ? 'session' : 'sessions', dot: false },
       tone: selected === WEEK_CELL_ID ? 'selected' : 'future',
     },
   ];
@@ -52,7 +54,9 @@ export function buildWeekStrip(args: {
     const isToday = key === todayKey;
     const isPast = key < todayKey;
     let status: WeekCellVM['status'] = null;
-    if (isToday) {
+    if (unavailable) {
+      // Nothing is known about the sessions of this day.
+    } else if (isToday) {
       const text = todayCellLabel(dayCounts);
       status = text ? { text, dot: true } : null;
     } else if (!isPast && dayCounts.total > 0) {

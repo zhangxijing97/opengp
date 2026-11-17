@@ -2,16 +2,25 @@
 
 import { useMemo, useState } from 'react';
 import type { StandingsSubjectType } from '../../lib/api-v1/types';
-import type { HomeStandings } from '../../lib/home/home-data';
+import { useDelayedFlag } from '../../lib/client-state/delayed';
+import { useStandings } from '../../lib/client-state/standings';
+import type { StandingsTarget } from '../../lib/home/standings-data';
 import { buildStandingsVM } from '../../lib/home/standings-model';
 import type { RulerSegment, StandingsRowVM } from '../../lib/home/standings-model';
+import { StandingsSkeleton } from './HomeSkeletons';
 
 // The right column (Figma component SidebarStandings): the series title, where the season stands (ROUND 20 / 24
 // and the ruler), the Drivers / Teams switch, the table, and the legend of the green bar. From the design this
 // leaves out: the carousel over series (only Formula 1 has standings) and the podiums column (the API has no
 // podium counts). TODO(design) for both.
+//
+// The panel loads its own data (src/lib/client-state/standings.ts) and never holds the schedule back. It is in
+// one of four states, and they never look alike: loading (the skeleton, with the real title), failed (a message
+// and Try again), published (the table), and not published yet.
 
 const GRID = 'grid grid-cols-[34px_1fr_28px_42px] items-center gap-x-1.5 px-4';
+const PANEL = 'w-72 shrink-0 overflow-hidden rounded-surface border border-border-default bg-surface-card';
+const SLOW_AFTER_MS = 4_000;
 
 // The roundel of the top three: a disc in gold, indigo or ink with a thin light ring inside.
 function Roundel({ rank }: { rank: 1 | 2 | 3 }) {
@@ -59,28 +68,76 @@ function Segment({ kind }: { kind: RulerSegment }) {
   return <span className={`w-1.75 shrink-0 rounded-segment ${shape}`} />;
 }
 
+function Failure({
+  message,
+  code,
+  loading,
+  onRetry,
+}: {
+  message: string;
+  code: string;
+  loading: boolean;
+  onRetry: () => void;
+}) {
+  return (
+    <div role="alert" className="border-t border-border-separator px-4 py-4">
+      <p className="text-footer-body text-flag-red">{message}</p>
+      <p className="text-caption mt-1 font-mono text-text-tertiary">{code}</p>
+      <button
+        type="button"
+        onClick={onRetry}
+        disabled={loading}
+        aria-busy={loading || undefined}
+        className="text-footer-body mt-3 font-semibold text-text-brand underline disabled:opacity-60"
+      >
+        {loading ? 'Trying again…' : 'Try again'}
+      </button>
+    </div>
+  );
+}
+
 const TABS: { type: StandingsSubjectType; label: string }[] = [
   { type: 'driver', label: 'Drivers' },
   { type: 'team', label: 'Teams' },
 ];
 
-export function StandingsPanel({ standings }: { standings: HomeStandings | null }) {
+const NOT_NONE = 'That is not the same as there being none.';
+
+export function StandingsPanel({ target }: { target: StandingsTarget | null }) {
   const [tab, setTab] = useState<StandingsSubjectType>('driver');
+  const { entry, loading, retry } = useStandings(target?.seasonId ?? null, target?.week);
+  const slow = useDelayedFlag(entry === undefined, SLOW_AFTER_MS);
+  const standings = entry?.status === 'ready' ? entry.data : null;
   const data = standings ? (tab === 'driver' ? standings.driver : standings.team) : null;
   const vm = useMemo(() => (data ? buildStandingsVM(data) : null), [data]);
   const failure = standings?.failures.find((item) => item.subjectType === tab);
 
-  if (!standings) {
+  if (!target) {
     return (
       <aside aria-label="Standings" className="w-72 shrink-0 rounded-surface border border-border-default bg-surface-card px-4 py-4">
         <p className="text-footer-body text-text-secondary">No standings are available yet.</p>
       </aside>
     );
   }
+  if (!entry) return <StandingsSkeleton title={target.seriesName} slow={slow} />;
+
+  if (entry.status === 'error') {
+    return (
+      <aside aria-label="Standings" className={PANEL}>
+        <h2 className="text-series-title px-4 pt-4 pb-3">{target.seriesName}</h2>
+        <Failure
+          message={`${entry.code === 'TIMEOUT' ? 'The standings took too long to load.' : 'The standings could not be loaded.'} ${NOT_NONE}`}
+          code={entry.code}
+          loading={loading}
+          onRetry={retry}
+        />
+      </aside>
+    );
+  }
 
   return (
-    <aside aria-label="Standings" className="w-72 shrink-0 overflow-hidden rounded-surface border border-border-default bg-surface-card">
-      <h2 className="text-series-title px-4 pt-4 pb-3">{standings.seriesName}</h2>
+    <aside aria-label="Standings" className={PANEL}>
+      <h2 className="text-series-title px-4 pt-4 pb-3">{target.seriesName}</h2>
 
       {vm?.round ? (
         <div className="flex flex-col gap-2 px-4 pb-3.5">
@@ -144,11 +201,16 @@ export function StandingsPanel({ standings }: { standings: HomeStandings | null 
             </div>
           ) : null}
         </>
+      ) : failure ? (
+        <Failure
+          message={`${failure.code === 'TIMEOUT' ? 'These standings took too long to load.' : 'These standings could not be loaded.'} ${NOT_NONE}`}
+          code={failure.code}
+          loading={loading}
+          onRetry={retry}
+        />
       ) : (
         <p className="text-footer-body border-t border-border-separator px-4 py-4 text-text-secondary">
-          {failure
-            ? `The standings could not be loaded (${failure.code}).`
-            : 'The standings are not published yet.'}
+          The standings are not published yet.
         </p>
       )}
     </aside>

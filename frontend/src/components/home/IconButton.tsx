@@ -1,5 +1,7 @@
+'use client';
+
 import Link from 'next/link';
-import type { ButtonHTMLAttributes, ReactNode } from 'react';
+import type { ButtonHTMLAttributes, MouseEventHandler, ReactNode } from 'react';
 
 // Round or rounded-square icon button (Figma component IconButton). `surface` is the Figma
 // variant property: nav (on the glass), page (white circle), card (grey circle).
@@ -19,16 +21,22 @@ export function IconButtonLink({
   href,
   label,
   surface,
+  busy = false,
+  onClick,
   children,
 }: {
   href: string;
   /** Accessible name; there is no visible text. */
   label: string;
   surface: IconButtonSurface;
+  /** The page this link goes to is being loaded. */
+  busy?: boolean;
+  /** Called first; call preventDefault to take over the navigation (a plain click only). */
+  onClick?: MouseEventHandler<HTMLAnchorElement>;
   children: ReactNode;
 }) {
   return (
-    <Link href={href} aria-label={label} className={classes(surface)}>
+    <Link href={href} aria-label={label} aria-busy={busy || undefined} onClick={onClick} className={classes(surface)}>
       {children}
     </Link>
   );

@@ -60,3 +60,13 @@ test('range title and relative week label', () => {
   assert.equal(relativeWeekLabel('2026-10-19', '2026-10-26'), 'Last week');
   assert.equal(relativeWeekLabel('2026-11-16', '2026-10-26'), 'Week of Nov 16');
 });
+
+test('when the schedule could not be loaded no cell claims a count', () => {
+  const cells = buildWeekStrip({ weekStart: '2026-10-26', todayKey: '2026-10-30', selected: WEEK_CELL_ID, counts, unavailable: true });
+  assert.equal(cells[0].number, '–');
+  assert.equal(cells[0].status, null);
+  assert.ok(cells.slice(1).every((cell) => cell.status === null));
+  // The days themselves are still known.
+  assert.deepEqual(cells.map((cell) => cell.label), ['WEEK', 'MON', 'TUE', 'WED', 'THU', 'TODAY', 'SAT', 'SUN']);
+  assert.deepEqual(cells.slice(1).map((cell) => cell.number), ['26', '27', '28', '29', '30', '31', '1']);
+});

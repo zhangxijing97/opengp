@@ -1,5 +1,5 @@
 import { getRounds } from '../api-v1/client';
-import type { ApiResult } from '../api-v1/client';
+import type { ApiRequestOptions, ApiResult } from '../api-v1/client';
 import type { RoundsListData } from '../api-v1/types';
 import type { SeriesTheme } from './series-theme';
 
@@ -8,8 +8,9 @@ import type { SeriesTheme } from './series-theme';
 //   a series the backend serves (today only Formula 1): the real `/api/v1/rounds` request;
 //   any other series: a stand-in request that answers at once with no rounds.
 // The stand-in is a placeholder, decided with the owner on 2026-11-14: it makes those series
-// look like they have no events. Weeks are asked for by track date (`dateBasis=track`). When the backend serves a series, give it an `apiId` in
-// series-theme.ts and its requests become real, with no other change.
+// look like they have no events. Weeks are asked for by track date (`dateBasis=track`). When the
+// backend serves a series, give it an `apiId` in series-theme.ts and its requests become real, with
+// no other change.
 
 export interface DateRange {
   from: string;
@@ -34,7 +35,11 @@ export function requestNotCovered(range: DateRange): Promise<ApiResult<RoundsLis
   });
 }
 
-export function requestSeriesRounds(theme: SeriesTheme, range: DateRange): Promise<ApiResult<RoundsListData>> {
-  if (theme.apiId) return getRounds({ ...range, tz: 'UTC', seriesId: theme.apiId, dateBasis: 'track' });
+export function requestSeriesRounds(
+  theme: SeriesTheme,
+  range: DateRange,
+  options?: ApiRequestOptions,
+): Promise<ApiResult<RoundsListData>> {
+  if (theme.apiId) return getRounds({ ...range, tz: 'UTC', seriesId: theme.apiId, dateBasis: 'track' }, options);
   return requestNotCovered(range);
 }
